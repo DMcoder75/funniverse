@@ -1,4 +1,4 @@
-import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import * as THREE from 'three';
 
 const FullUniverseScene = forwardRef(({ onLocationChange }, ref) => {
@@ -22,74 +22,78 @@ const FullUniverseScene = forwardRef(({ onLocationChange }, ref) => {
     surfaceMode: false
   });
 
-  // Planet data with realistic colors and properties
+  // Planet data with realistic colors based on reference images
   const planetData = {
     Sun: { 
       distance: 0, 
-      size: 8, 
-      color: 0xFDB813, 
-      emissive: 0xFDB813,
-      emissiveIntensity: 0.3,
-      rotationSpeed: 0.002,
-      surfaceDistance: 12
+      size: 12, 
+      color: 0xFF6B00, // Bright orange-yellow like real sun
+      rotationSpeed: 0.001,
+      surfaceDistance: 20,
+      emissive: 0xFF4500,
+      emissiveIntensity: 0.5
     },
     Mercury: { 
       distance: 15, 
-      size: 0.8, 
-      color: 0x8C7853, 
-      rotationSpeed: 0.01,
-      surfaceDistance: 2
+      size: 1.5, 
+      color: 0x8C7853, // Gray-brown rocky surface
+      rotationSpeed: 0.008,
+      surfaceDistance: 3
     },
     Venus: { 
-      distance: 20, 
-      size: 1.2, 
-      color: 0xFFC649, 
-      rotationSpeed: 0.007,
-      surfaceDistance: 2.5
+      distance: 22, 
+      size: 2.0, 
+      color: 0xFFC649, // Bright yellowish-white atmosphere
+      rotationSpeed: 0.006,
+      surfaceDistance: 4
     },
     Earth: { 
-      distance: 25, 
-      size: 1.3, 
-      color: 0x6B93D6, 
+      distance: 30, 
+      size: 2.2, 
+      color: 0x6B93D6, // Blue oceans
       rotationSpeed: 0.005,
-      surfaceDistance: 2.8,
-      hasAtmosphere: true
+      surfaceDistance: 4.5,
+      hasAtmosphere: true,
+      hasOceans: true,
+      hasContinents: true
     },
     Mars: { 
-      distance: 35, 
-      size: 1.0, 
-      color: 0xCD5C5C, 
+      distance: 40, 
+      size: 1.8, 
+      color: 0xCD5C5C, // Reddish-orange surface
       rotationSpeed: 0.005,
-      surfaceDistance: 2.2
+      surfaceDistance: 3.5,
+      hasDesert: true
     },
     Jupiter: { 
-      distance: 60, 
-      size: 4.0, 
-      color: 0xD8CA9D, 
+      distance: 70, 
+      size: 6.0, 
+      color: 0xD2B48C, // Tan with brown stripes
       rotationSpeed: 0.002,
-      surfaceDistance: 8
+      surfaceDistance: 12,
+      hasStripes: true
     },
     Saturn: { 
-      distance: 80, 
-      size: 3.5, 
-      color: 0xFAD5A5, 
+      distance: 90, 
+      size: 5.5, 
+      color: 0xFAD5A5, // Pale yellow-beige
       rotationSpeed: 0.002,
-      surfaceDistance: 7,
+      surfaceDistance: 11,
       hasRings: true
     },
     Uranus: { 
-      distance: 120, 
-      size: 2.5, 
-      color: 0x4FD0E3, 
+      distance: 130, 
+      size: 3.5, 
+      color: 0x4FD0E7, // Pale blue-green ice giant
       rotationSpeed: 0.003,
-      surfaceDistance: 5
+      surfaceDistance: 7
     },
     Neptune: { 
-      distance: 150, 
-      size: 2.4, 
-      color: 0x4B70DD, 
+      distance: 160, 
+      size: 3.2, 
+      color: 0x4169E1, // Deep blue
       rotationSpeed: 0.003,
-      surfaceDistance: 5
+      surfaceDistance: 6.5
     }
   };
 
@@ -169,47 +173,152 @@ const FullUniverseScene = forwardRef(({ onLocationChange }, ref) => {
     // Create planets
     Object.entries(planetData).forEach(([name, data]) => {
       const geometry = new THREE.SphereGeometry(data.size, 32, 32);
-      
       let material;
       if (name === 'Sun') {
-        material = new THREE.MeshBasicMaterial({
-          color: data.color,
-          emissive: data.emissive,
-          emissiveIntensity: data.emissiveIntensity
-        });
-      } else if (name === 'Earth') {
-        // Special Earth with procedural texture
+        // Create realistic Sun texture with solar flares
         const canvas = document.createElement('canvas');
         canvas.width = 512;
         canvas.height = 256;
         const context = canvas.getContext('2d');
         
-        // Create Earth-like texture
+        // Create radial gradient for sun surface
         const gradient = context.createRadialGradient(256, 128, 0, 256, 128, 256);
-        gradient.addColorStop(0, '#4169e1'); // Blue center
-        gradient.addColorStop(0.4, '#228b22'); // Green
-        gradient.addColorStop(0.6, '#8b4513'); // Brown
-        gradient.addColorStop(1, '#4169e1'); // Blue edge
+        gradient.addColorStop(0, '#FFFF00'); // Bright yellow center
+        gradient.addColorStop(0.3, '#FF8C00'); // Orange
+        gradient.addColorStop(0.7, '#FF4500'); // Red-orange
+        gradient.addColorStop(1, '#FF6B00'); // Outer orange
         
         context.fillStyle = gradient;
         context.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Add some land masses
-        for (let i = 0; i < 100; i++) {
+        // Add solar flares and texture
+        for (let i = 0; i < 50; i++) {
           const x = Math.random() * canvas.width;
           const y = Math.random() * canvas.height;
-          const size = Math.random() * 30 + 10;
+          const size = Math.random() * 20 + 5;
           
-          context.fillStyle = Math.random() > 0.5 ? '#228b22' : '#8b4513';
+          context.fillStyle = Math.random() > 0.5 ? '#FFFF88' : '#FF6600';
           context.beginPath();
           context.arc(x, y, size, 0, Math.PI * 2);
           context.fill();
         }
         
+        const sunTexture = new THREE.CanvasTexture(canvas);
+        material = new THREE.MeshBasicMaterial({
+          map: sunTexture,
+          color: data.color,
+          emissive: data.emissive,
+          emissiveIntensity: data.emissiveIntensity
+        });
+      } else if (name === 'Earth') {
+        // Create realistic Earth texture based on reference images
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+        
+        // Deep blue ocean base
+        context.fillStyle = '#1e40af';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Add continents with realistic colors
+        for (let i = 0; i < 60; i++) {
+          const x = Math.random() * canvas.width;
+          const y = Math.random() * canvas.height;
+          const size = Math.random() * 35 + 20;
+          
+          // Mix of green and brown for land masses
+          context.fillStyle = Math.random() > 0.6 ? '#228b22' : '#8b4513';
+          context.beginPath();
+          context.arc(x, y, size, 0, Math.PI * 2);
+          context.fill();
+        }
+        
+        // Add white clouds
+        context.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        for (let i = 0; i < 40; i++) {
+          const x = Math.random() * canvas.width;
+          const y = Math.random() * canvas.height;
+          const size = Math.random() * 25 + 15;
+          
+          context.beginPath();
+          context.arc(x, y, size, 0, Math.PI * 2);
+          context.fill();
+        }
+        
+        // Add polar ice caps
+        context.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        context.fillRect(0, 0, canvas.width, 15);
+        context.fillRect(0, canvas.height - 15, canvas.width, 15);
+        
         const earthTexture = new THREE.CanvasTexture(canvas);
         material = new THREE.MeshPhongMaterial({
           map: earthTexture,
+          color: data.color, // Ensure base color is still applied
           shininess: 10
+        });
+      } else if (name === 'Mars') {
+        // Create Mars texture with desert patterns
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+        
+        // Base red color
+        context.fillStyle = '#cd5c5c';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Add darker patches for terrain
+        for (let i = 0; i < 40; i++) {
+          const x = Math.random() * canvas.width;
+          const y = Math.random() * canvas.height;
+          const size = Math.random() * 25 + 15;
+          
+          context.fillStyle = '#8b3a3a';
+          context.beginPath();
+          context.arc(x, y, size, 0, Math.PI * 2);
+          context.fill();
+        }
+        
+        // Add polar ice caps
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, 20);
+        context.fillRect(0, canvas.height - 20, canvas.width, 20);
+        
+        const marsTexture = new THREE.CanvasTexture(canvas);
+        material = new THREE.MeshPhongMaterial({
+          map: marsTexture,
+          color: data.color, // Ensure base color is still applied
+          shininess: 5
+        });
+      } else if (name === 'Jupiter') {
+        // Create Jupiter texture with stripes
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+        
+        // Base color
+        context.fillStyle = '#d8ca9d';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Add horizontal stripes
+        for (let y = 0; y < canvas.height; y += 20) {
+          context.fillStyle = y % 40 === 0 ? '#c4a484' : '#e6d4b7';
+          context.fillRect(0, y, canvas.width, 10);
+        }
+        
+        // Add the Great Red Spot
+        context.fillStyle = '#cc6666';
+        context.beginPath();
+        context.ellipse(canvas.width * 0.3, canvas.height * 0.6, 30, 20, 0, 0, Math.PI * 2);
+        context.fill();
+        
+        const jupiterTexture = new THREE.CanvasTexture(canvas);
+        material = new THREE.MeshPhongMaterial({
+          map: jupiterTexture,
+          color: data.color, // Ensure base color is still applied
+          shininess: 5
         });
       } else {
         material = new THREE.MeshPhongMaterial({
@@ -278,20 +387,30 @@ const FullUniverseScene = forwardRef(({ onLocationChange }, ref) => {
         planetsRef.current[name + '_atmosphere'] = atmosphere;
       }
 
-      // Add planet labels
+      // Add planet labels with transparent background
       const canvas2 = document.createElement('canvas');
       canvas2.width = 256;
       canvas2.height = 64;
       const context2 = canvas2.getContext('2d');
-      context2.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      context2.fillRect(0, 0, canvas2.width, canvas2.height);
-      context2.fillStyle = 'white';
-      context2.font = '20px Arial';
+      
+      // No background - transparent
+      context2.clearRect(0, 0, canvas2.width, canvas2.height);
+      
+      // Add text with outline for better visibility
+      context2.strokeStyle = 'black';
+      context2.lineWidth = 3;
+      context2.font = 'bold 20px Arial';
       context2.textAlign = 'center';
+      context2.strokeText(name, canvas2.width / 2, canvas2.height / 2 + 7);
+      
+      context2.fillStyle = 'white';
       context2.fillText(name, canvas2.width / 2, canvas2.height / 2 + 7);
       
       const labelTexture = new THREE.CanvasTexture(canvas2);
-      const labelMaterial = new THREE.SpriteMaterial({ map: labelTexture });
+      const labelMaterial = new THREE.SpriteMaterial({ 
+        map: labelTexture,
+        transparent: true
+      });
       const label = new THREE.Sprite(labelMaterial);
       label.scale.set(8, 2, 1);
       label.position.copy(planet.position);
