@@ -86,16 +86,16 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
     rendererRef.current = renderer;
     mountRef.current.appendChild(renderer.domElement);
 
-    // Realistic lighting
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.1);
+    // Realistic lighting - simplified
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.PointLight(0xfff8dc, 3, 0);
+    const sunLight = new THREE.PointLight(0xffffff, 2, 0);
     sunLight.position.set(0, 0, 0);
     scene.add(sunLight);
 
-    // Create realistic Sun
-    const sunGeometry = new THREE.SphereGeometry(8, 64, 64);
+    // Create realistic Sun - using basic material for visibility
+    const sunGeometry = new THREE.SphereGeometry(8, 32, 32);
     const sunMaterial = new THREE.MeshBasicMaterial({ 
       color: 0xfff8dc
     });
@@ -109,32 +109,37 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       angle: 0
     };
 
-    // Scaling factors
+    // Scaling factors - increased for better visibility
     const AU_TO_SCENE_UNITS = 50;
-    const RADIUS_SCALE = 0.5;
+    const RADIUS_SCALE = 2.0; // Increased from 0.5 to make planets more visible
 
     // Realistic planet colors and materials
     const planetConfigs = {
-      Mercury: { color: 0x8c7853, emissive: 0x000000 },
-      Venus: { color: 0xffc649, emissive: 0x332200 },
-      Earth: { color: 0x6b93d6, emissive: 0x001122 },
-      Mars: { color: 0xcd5c5c, emissive: 0x220000 },
-      Jupiter: { color: 0xd2b48c, emissive: 0x221100 },
-      Saturn: { color: 0xfad5a5, emissive: 0x221100 },
-      Uranus: { color: 0x4fd0e7, emissive: 0x001122 },
-      Neptune: { color: 0x4b70dd, emissive: 0x000022 }
+      Mercury: { color: 0x8c7853 },
+      Venus: { color: 0xffc649 },
+      Earth: { color: 0x6b93d6 },
+      Mars: { color: 0xcd5c5c },
+      Jupiter: { color: 0xd2b48c },
+      Saturn: { color: 0xfad5a5 },
+      Uranus: { color: 0x4fd0e7 },
+      Neptune: { color: 0x4b70dd }
     };
 
     // Create all planets with realistic appearance
     Object.entries(astronomicalData).forEach(([name, data]) => {
       if (name === 'Moon') return;
 
-      const radius = Math.max(data.radius_km * RADIUS_SCALE * 0.001, 0.2);
+      const radius = Math.max(data.radius_km * RADIUS_SCALE * 0.001, 0.8); // Increased minimum size
       const distance = data.distance_from_sun_au * AU_TO_SCENE_UNITS;
       const config = planetConfigs[name];
 
+      if (!config) {
+        console.warn(`No color configuration found for planet: ${name}`);
+        return;
+      }
+
       const geometry = new THREE.SphereGeometry(radius, 32, 32);
-      const material = new THREE.MeshLambertMaterial({ 
+      const material = new THREE.MeshBasicMaterial({ 
         color: config.color
       });
 
@@ -144,8 +149,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       }
 
       if (name === 'Jupiter') {
-        // Add subtle banding effect
-        material.color.setHex(0xd2b48c);
+        material.color.setHex(0xd2b48c); // Ensure Jupiter color is applied
       }
 
       const planet = new THREE.Mesh(geometry, material);
@@ -155,7 +159,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       // Add Saturn's rings with realistic appearance
       if (name === 'Saturn') {
         const ringGeometry = new THREE.RingGeometry(radius * 1.2, radius * 2.2, 32);
-        const ringMaterial = new THREE.MeshLambertMaterial({ 
+        const ringMaterial = new THREE.MeshBasicMaterial({ 
           color: 0xc0c0c0, 
           side: THREE.DoubleSide,
           transparent: true,
@@ -268,7 +272,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       const moonRadius = 0.15;
       const moonDistance = 3;
       const moonGeometry = new THREE.SphereGeometry(moonRadius, 32, 32);
-      const moonMaterial = new THREE.MeshLambertMaterial({ color: 0xc0c0c0 });
+      const moonMaterial = new THREE.MeshBasicMaterial({ color: 0xc0c0c0 });
       const moon = new THREE.Mesh(moonGeometry, moonMaterial);
       scene.add(moon);
 
@@ -287,7 +291,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       const phobosRadius = 0.05;
       const phobosDistance = 1.5;
       const phobosGeometry = new THREE.SphereGeometry(phobosRadius, 16, 16);
-      const phobosMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+      const phobosMaterial = new THREE.MeshBasicMaterial({ color: 0x696969 });
       const phobos = new THREE.Mesh(phobosGeometry, phobosMaterial);
       scene.add(phobos);
 
@@ -295,7 +299,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       const deimosRadius = 0.03;
       const deimosDistance = 2.2;
       const deimosGeometry = new THREE.SphereGeometry(deimosRadius, 16, 16);
-      const deimosMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+      const deimosMaterial = new THREE.MeshBasicMaterial({ color: 0x696969 });
       const deimos = new THREE.Mesh(deimosGeometry, deimosMaterial);
       scene.add(deimos);
 
@@ -328,7 +332,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
 
       jupiterMoons.forEach((moonData, index) => {
         const moonGeometry = new THREE.SphereGeometry(moonData.radius, 24, 24);
-        const moonMaterial = new THREE.MeshLambertMaterial({ color: moonData.color });
+        const moonMaterial = new THREE.MeshBasicMaterial({ color: moonData.color });
         const moon = new THREE.Mesh(moonGeometry, moonMaterial);
         scene.add(moon);
 
@@ -351,7 +355,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
 
       saturnMoons.forEach((moonData, index) => {
         const moonGeometry = new THREE.SphereGeometry(moonData.radius, 24, 24);
-        const moonMaterial = new THREE.MeshLambertMaterial({ color: moonData.color });
+        const moonMaterial = new THREE.MeshBasicMaterial({ color: moonData.color });
         const moon = new THREE.Mesh(moonGeometry, moonMaterial);
         scene.add(moon);
 
@@ -374,7 +378,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
 
       uranusMoons.forEach((moonData, index) => {
         const moonGeometry = new THREE.SphereGeometry(moonData.radius, 20, 20);
-        const moonMaterial = new THREE.MeshLambertMaterial({ color: moonData.color });
+        const moonMaterial = new THREE.MeshBasicMaterial({ color: moonData.color });
         const moon = new THREE.Mesh(moonGeometry, moonMaterial);
         scene.add(moon);
 
@@ -393,7 +397,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       const tritonRadius = 0.11;
       const tritonDistance = 5;
       const tritonGeometry = new THREE.SphereGeometry(tritonRadius, 24, 24);
-      const tritonMaterial = new THREE.MeshLambertMaterial({ color: 0xffe4e1 });
+      const tritonMaterial = new THREE.MeshBasicMaterial({ color: 0xffe4e1 });
       const triton = new THREE.Mesh(tritonGeometry, tritonMaterial);
       scene.add(triton);
 
