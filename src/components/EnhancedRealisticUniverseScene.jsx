@@ -9,6 +9,11 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
   const cameraRef = useRef(null);
   const planetsRef = useRef({});
   const animationIdRef = useRef(null);
+  
+  // Camera control variables as refs so they can be accessed from useImperativeHandle
+  const targetXRef = useRef(0);
+  const targetYRef = useRef(0);
+  const cameraDistanceRef = useRef(150);
 
   useImperativeHandle(ref, () => ({
     focusOnPlanet: (planetName) => {
@@ -27,12 +32,14 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
         const planetPosition = planetInfo.mesh.position.clone();
         console.log('Planet position:', planetPosition);
         
-        // Calculate target camera position based on planet type
-        let targetPosition;
+        // Calculate target camera angles that the animation loop uses
+        let targetTheta, targetPhi, targetDistance;
         
         if (planetName === 'Sun') {
           // For Sun, position camera at a fixed distance
-          targetPosition = new THREE.Vector3(0, 30, 120);
+          targetTheta = 0;
+          targetPhi = 0.3;
+          targetDistance = 120;
         } else {
           // For planets, calculate position based on their orbital location
           const distance = planetInfo.distance || 100;
@@ -46,19 +53,14 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
           });
           
           // Position camera to look at the planet from a good angle
-          const cameraDistance = Math.max(distance * 0.4, 40); // Distance based on planet's orbit
-          const offsetAngle = angle + Math.PI / 3; // Offset for better viewing angle
+          targetTheta = angle + Math.PI / 3; // Offset for better viewing angle
+          targetPhi = 0.2; // Slight elevation
+          targetDistance = Math.max(distance * 0.4, 40); // Distance based on planet's orbit
           
-          targetPosition = new THREE.Vector3(
-            Math.cos(offsetAngle) * cameraDistance,
-            20, // Slight elevation
-            Math.sin(offsetAngle) * cameraDistance
-          );
-          
-          console.log('Calculated target position:', {
-            offsetAngle: offsetAngle,
-            cameraDistance: cameraDistance,
-            targetPosition: targetPosition
+          console.log('Calculated target angles:', {
+            targetTheta: targetTheta,
+            targetPhi: targetPhi,
+            targetDistance: targetDistance
           });
         }
         
@@ -67,51 +69,78 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
         if (camera) {
           console.log('Camera found, starting animation');
           
-          // Set camera focus mode to prevent interference from mouse controls
-          camera.userData.focusMode = true;
-          console.log('Focus mode set to:', camera.userData.focusMode);
+          // Get current camera angles
+          const currentDistance = Math.sqrt(
+            camera.position.x * camera.position.x + 
+            camera.position.y * camera.position.y + 
+            camera.position.z * camera.position.z
+          );
+          const currentTheta = Math.atan2(camera.position.z, camera.position.x);
+          const currentPhi = Math.asin(camera.position.y / currentDistance);
           
-          // Animate camera to target position
-          const startPosition = camera.position.clone();
-          const startTime = Date.now();
-          const duration = 2000; // 2 seconds
+          console.log('Current camera state:', {
+            currentTheta: currentTheta,
+            currentPhi: currentPhi,
+            currentDistance: currentDistance
+          });
           
-          console.log('Starting animation from:', startPosition, 'to:', targetPosition);
-          
-          const animateCamera = () => {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / duration, 1);
+          // Find the animation loop variables and animate them
+          const animateToTarget = () => {
+            const startTime = Date.now();
+            const duration = 2000; // 2 seconds
             
-            // Smooth easing
-            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            // Store initial values
+            const startTheta = targetXRef.current;
+            const startPhi = targetYRef.current;
+            const startDistance = cameraDistanceRef.current;
             
-            // Interpolate camera position directly
-            camera.position.lerpVectors(startPosition, targetPosition, easeProgress);
+            console.log('Starting animation from:', {
+              startTheta: startTheta,
+              startPhi: startPhi,
+              startDistance: startDistance
+            }, 'to:', {
+              targetTheta: targetTheta,
+              targetPhi: targetPhi,
+              targetDistance: targetDistance
+            });
             
-            // Always look at the planet (or Sun center)
-            const lookAtTarget = planetName === 'Sun' ? new THREE.Vector3(0, 0, 0) : planetPosition;
-            camera.lookAt(lookAtTarget);
-            
-            console.log('Animation progress:', progress, 'Camera position:', camera.position);
-            
-            if (progress < 1) {
-              requestAnimationFrame(animateCamera);
-            } else {
-              // Ensure final position and look direction
-              camera.position.copy(targetPosition);
-              camera.lookAt(lookAtTarget);
+            const animateStep = () => {
+              const elapsed = Date.now() - startTime;
+              const progress = Math.min(elapsed / duration, 1);
               
-              console.log('Animation complete, final position:', camera.position);
+              // Smooth easing
+              const easeProgress = 1 - Math.pow(1 - progress, 3);
               
-              // Clear focus mode after a short delay to allow user control
-              setTimeout(() => {
-                camera.userData.focusMode = false;
-                console.log('Focus mode cleared');
-              }, 100);
-            }
+              // Update the animation loop variables directly
+              targetXRef.current = startTheta + (targetTheta - startTheta) * easeProgress;
+              targetYRef.current = startPhi + (targetPhi - startPhi) * easeProgress;
+              cameraDistanceRef.current = startDistance + (targetDistance - startDistance) * easeProgress;
+              
+              console.log('Animation progress:', progress, 'Current values:', {
+                targetX: targetXRef.current,
+                targetY: targetYRef.current,
+                cameraDistance: cameraDistanceRef.current
+              });
+              
+              if (progress < 1) {
+                requestAnimationFrame(animateStep);
+              } else {
+                // Ensure final values
+                targetXRef.current = targetTheta;
+                targetYRef.current = targetPhi;
+                cameraDistanceRef.current = targetDistance;
+                console.log('Animation complete, final values:', {
+                  targetX: targetXRef.current,
+                  targetY: targetYRef.current,
+                  cameraDistance: cameraDistanceRef.current
+                });
+              }
+            };
+            
+            animateStep();
           };
           
-          animateCamera();
+          animateToTarget();
         } else {
           console.log('Camera not found in cameraRef.current');
         }
@@ -371,9 +400,10 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
     let isMouseDown = false;
     let mouseX = 0;
     let mouseY = 0;
-    let targetX = 0;
-    let targetY = 0;
-    let cameraDistance = 150;
+    // Use ref variables instead of local variables
+    let targetX = targetXRef.current;
+    let targetY = targetYRef.current;
+    let cameraDistance = cameraDistanceRef.current;
     let isDragging = false;
     let dragThreshold = 5;
 
@@ -402,11 +432,11 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
       }
       
       if (isDragging) {
-        targetX += deltaX * 0.005;
-        targetY += deltaY * 0.005;
+        targetXRef.current += deltaX * 0.005;
+        targetYRef.current += deltaY * 0.005;
         
         // Limit vertical rotation
-        targetY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetY));
+        targetYRef.current = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetYRef.current));
         
         mouseX = event.clientX;
         mouseY = event.clientY;
@@ -458,8 +488,8 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
       
       // Smooth zoom with better limits
       const zoomSpeed = 0.05;
-      cameraDistance += event.deltaY * zoomSpeed;
-      cameraDistance = Math.max(10, Math.min(1000, cameraDistance));
+      cameraDistanceRef.current += event.deltaY * zoomSpeed;
+      cameraDistanceRef.current = Math.max(10, Math.min(1000, cameraDistanceRef.current));
       
       // Ensure camera maintains proper aspect ratio during zoom
       const camera = cameraRef.current;
@@ -500,11 +530,11 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
       const deltaX = event.touches[0].clientX - mouseX;
       const deltaY = event.touches[0].clientY - mouseY;
       
-      targetX += deltaX * 0.005;
-      targetY += deltaY * 0.005;
+      targetXRef.current += deltaX * 0.005;
+      targetYRef.current += deltaY * 0.005;
       
       // Limit vertical rotation
-      targetY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetY));
+      targetYRef.current = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetYRef.current));
       
       mouseX = event.touches[0].clientX;
       mouseY = event.touches[0].clientY;
@@ -528,12 +558,21 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
     const animate = () => {
       animationIdRef.current = requestAnimationFrame(animate);
 
+      // Debug: log current ref values periodically
+      if (Math.random() < 0.001) { // Log occasionally to avoid spam
+        console.log('Animation loop ref values:', {
+          targetX: targetXRef.current,
+          targetY: targetYRef.current,
+          cameraDistance: cameraDistanceRef.current
+        });
+      }
+
       // Only update camera rotation if not in focus mode
       if (!camera.userData.focusMode) {
         // Update camera rotation based on mouse/touch input
-        camera.position.x = Math.cos(targetX) * Math.cos(targetY) * cameraDistance;
-        camera.position.y = Math.sin(targetY) * cameraDistance;
-        camera.position.z = Math.sin(targetX) * Math.cos(targetY) * cameraDistance;
+        camera.position.x = Math.cos(targetXRef.current) * Math.cos(targetYRef.current) * cameraDistanceRef.current;
+        camera.position.y = Math.sin(targetYRef.current) * cameraDistanceRef.current;
+        camera.position.z = Math.sin(targetXRef.current) * Math.cos(targetYRef.current) * cameraDistanceRef.current;
         camera.lookAt(0, 0, 0);
       } else {
         // Debug: log when focus mode is active
