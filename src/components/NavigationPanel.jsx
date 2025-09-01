@@ -1,8 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Home, Zap, Globe, Rocket } from 'lucide-react';
+import { Home, Zap, Globe, Rocket, ArrowLeft, Earth, Star } from 'lucide-react';
 
-const NavigationPanel = ({ onNavigateTo, currentLocation }) => {
+const NavigationPanel = ({ onNavigateTo, currentLocation, viewMode, onBackToUniverse }) => {
   const locations = [
     { name: 'Earth', icon: Globe, color: 'text-blue-500' },
     { name: 'Moon', icon: Zap, color: 'text-gray-400' },
@@ -28,29 +28,74 @@ const NavigationPanel = ({ onNavigateTo, currentLocation }) => {
         <div className="text-sm text-gray-300 mb-3">
           Current: <span className="text-white font-semibold">{currentLocation}</span>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          {locations.map((location) => {
-            const IconComponent = location.icon;
-            return (
-              <Button
-                key={location.name}
-                variant="outline"
-                size="sm"
-                className="justify-start gap-2 bg-gray-800/50 border-gray-600 hover:bg-gray-700/50 text-white"
-                onClick={() => onNavigateTo(location.name)}
-              >
-                <IconComponent className={`w-4 h-4 ${location.color}`} />
-                {location.name}
-              </Button>
-            );
-          })}
-        </div>
-        <div className="text-xs text-gray-400 mt-4 p-2 bg-gray-800/30 rounded">
-          <p><strong>Controls:</strong></p>
-          <p>• Mouse: Rotate view</p>
-          <p>• Scroll: Zoom in/out</p>
-          <p>• Buttons: Quick travel</p>
-        </div>
+        
+        {viewMode === 'earth' || viewMode === 'galaxy' ? (
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start gap-2 bg-gray-800/50 border-gray-600 hover:bg-gray-700/50 text-white"
+              onClick={onBackToUniverse}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Universe
+            </Button>
+            <div className="text-xs text-gray-400 p-2 bg-gray-800/30 rounded">
+              <p><strong>{viewMode === 'earth' ? 'Earth View' : 'Galaxy View'} Controls:</strong></p>
+              <p>• Mouse: Rotate view</p>
+              <p>• Scroll: Zoom in/out</p>
+              {viewMode === 'earth' && <p>• Zoom from space to surface</p>}
+              {viewMode === 'galaxy' && <p>• Explore galactic structures</p>}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start gap-2 bg-blue-800/50 border-blue-600 hover:bg-blue-700/50 text-white"
+              onClick={() => onNavigateTo('Earth View')}
+            >
+              <Earth className="w-4 h-4 text-blue-400" />
+              Immersive Earth View
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start gap-2 bg-purple-800/50 border-purple-600 hover:bg-purple-700/50 text-white"
+              onClick={() => onNavigateTo('Galaxy View')}
+            >
+              <Star className="w-4 h-4 text-purple-400" />
+              Enhanced Galaxy View
+            </Button>
+            
+            <div className="grid grid-cols-2 gap-2">
+              {locations.map((location) => {
+                const IconComponent = location.icon;
+                return (
+                  <Button
+                    key={location.name}
+                    variant="outline"
+                    size="sm"
+                    className="justify-start gap-2 bg-gray-800/50 border-gray-600 hover:bg-gray-700/50 text-white"
+                    onClick={() => onNavigateTo(location.name)}
+                  >
+                    <IconComponent className={`w-4 h-4 ${location.color}`} />
+                    {location.name}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <div className="text-xs text-gray-400 mt-4 p-2 bg-gray-800/30 rounded">
+              <p><strong>Controls:</strong></p>
+              <p>• Mouse: Rotate view</p>
+              <p>• Scroll: Zoom in/out</p>
+              <p>• Buttons: Quick travel</p>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

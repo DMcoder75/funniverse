@@ -457,6 +457,11 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
         const planet = planetInfo.mesh;
         const distance = planetName === 'Sun' ? 50 : 20;
         
+        // Update the current location immediately
+        if (onLocationChange) {
+          onLocationChange(planetName);
+        }
+        
         // Calculate target camera position
         const planetPosition = planet.position.clone();
         const targetCameraDistance = distance;
