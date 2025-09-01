@@ -12,12 +12,91 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
 
   useImperativeHandle(ref, () => ({
     focusOnPlanet: (planetName) => {
-      // This will be called from the navigation panel
-      if (typeof window !== 'undefined' && window.focusOnPlanetRef) {
-        window.focusOnPlanetRef(planetName);
+      console.log('focusOnPlanet called for:', planetName);
+      
+      const planetInfo = planetsRef.current[planetName];
+      if (planetInfo && planetInfo.mesh) {
+        console.log('Planet found:', planetName);
+        
+        // Update location immediately
+        if (onLocationChange) {
+          onLocationChange(planetName);
+        }
+        
+        // Get the planet's current world position
+        const planetPosition = planetInfo.mesh.position.clone();
+        console.log('Planet position:', planetPosition);
+        
+        // Calculate camera target position based on planet type
+        let cameraTargetPosition;
+        
+        if (planetName === 'Sun') {
+          // For Sun, position camera at a fixed distance
+          cameraTargetPosition = new THREE.Vector3(0, 30, 120);
+        } else {
+          // For planets, calculate position based on their orbital location
+          const distance = planetInfo.distance || 100;
+          const angle = planetInfo.angle || 0;
+          
+          // Position camera slightly outside the planet's orbit
+          const cameraDistance = 25; // Fixed distance from planet
+          const offsetAngle = angle + Math.PI / 4; // Offset for better viewing angle
+          
+          cameraTargetPosition = new THREE.Vector3(
+            Math.cos(offsetAngle) * (distance + cameraDistance),
+            15, // Slight elevation
+            Math.sin(offsetAngle) * (distance + cameraDistance)
+          );
+        }
+        
+        console.log('Camera target position:', cameraTargetPosition);
+        
+        // Get current camera
+        const camera = cameraRef.current;
+        if (camera) {
+          // Set camera focus mode to prevent interference from mouse controls
+          camera.userData.focusMode = true;
+          
+          // Animate camera to target position
+          const startPosition = camera.position.clone();
+          const startTime = Date.now();
+          const duration = 2000; // 2 seconds
+          
+          const animateCamera = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Smooth easing
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            
+            // Interpolate camera position
+            camera.position.lerpVectors(startPosition, cameraTargetPosition, easeProgress);
+            
+            // Always look at the planet (or Sun)
+            const lookAtTarget = planetName === 'Sun' ? new THREE.Vector3(0, 0, 0) : planetPosition;
+            camera.lookAt(lookAtTarget);
+            
+            if (progress < 1) {
+              requestAnimationFrame(animateCamera);
+            } else {
+              // Ensure final position and look direction
+              camera.position.copy(cameraTargetPosition);
+              camera.lookAt(lookAtTarget);
+              
+              // Clear focus mode after animation
+              setTimeout(() => {
+                camera.userData.focusMode = false;
+              }, 500);
+            }
+          };
+          
+          animateCamera();
+        }
+      } else {
+        console.log('Planet not found:', planetName, 'Available planets:', Object.keys(planetsRef.current));
       }
     }
-  }), []);
+  }), [onLocationChange]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -80,8 +159,8 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
     // Store stars reference for animation
     const starsRef = stars;
 
-    // Camera setup
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3000);
+    // Camera setup with proper aspect ratio and FOV
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
     camera.position.set(0, 50, 150);
     cameraRef.current = camera;
 
@@ -132,44 +211,44 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
     // Enhanced planet configurations with realistic textures
     const planetConfigs = {
       Mercury: { 
-        color: 0x8c7853, 
+        color: 0xbfa570, 
         texture: '/assets/textures/mercury_texture.jpg',
-        emissive: 0x000000 
+        emissive: 0x332211 
       },
       Venus: { 
-        color: 0xffc649, 
+        color: 0xffd966, 
         texture: '/assets/textures/venus_texture.png',
-        emissive: 0x332200 
+        emissive: 0x554433 
       },
       Earth: { 
-        color: 0x0077be, 
+        color: 0x2299dd, 
         texture: '/assets/textures/earth_texture.jpg',
-        emissive: 0x001122 
+        emissive: 0x003355 
       },
       Mars: { 
-        color: 0xcd5c5c, 
+        color: 0xee7777, 
         texture: '/assets/textures/mars_texture.jpg',
-        emissive: 0x220000 
+        emissive: 0x443333 
       },
       Jupiter: { 
-        color: 0xd2b48c, 
+        color: 0xeeccaa, 
         texture: '/assets/textures/jupiter_texture.jpg',
-        emissive: 0x221100 
+        emissive: 0x443322 
       },
       Saturn: { 
-        color: 0xfad5a5, 
+        color: 0xffeecc, 
         texture: '/assets/textures/saturn_texture.jpg',
-        emissive: 0x221100 
+        emissive: 0x443322 
       },
       Uranus: { 
-        color: 0x4fd0e7, 
+        color: 0x66ddff, 
         texture: '/assets/textures/uranus_texture.png',
-        emissive: 0x001122 
+        emissive: 0x003344 
       },
       Neptune: { 
-        color: 0x4b70dd, 
+        color: 0x6688ff, 
         texture: '/assets/textures/neptune_texture.jpg',
-        emissive: 0x000022 
+        emissive: 0x002244 
       }
     };
 
@@ -349,8 +428,28 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
 
     const handleWheel = (event) => {
       event.preventDefault();
-      cameraDistance += event.deltaY * 0.1;
-      cameraDistance = Math.max(20, Math.min(800, cameraDistance));
+      
+      // Smooth zoom with better limits
+      const zoomSpeed = 0.05;
+      cameraDistance += event.deltaY * zoomSpeed;
+      cameraDistance = Math.max(10, Math.min(1000, cameraDistance));
+      
+      // Ensure camera maintains proper aspect ratio during zoom
+      const camera = cameraRef.current;
+      if (camera) {
+        // Update camera position while maintaining look direction
+        const currentDirection = new THREE.Vector3();
+        camera.getWorldDirection(currentDirection);
+        
+        // Maintain the current viewing angle but adjust distance
+        const currentTarget = new THREE.Vector3(0, 0, 0); // Default look at center
+        const newPosition = currentTarget.clone().sub(currentDirection.multiplyScalar(cameraDistance));
+        
+        // Only update if not in planet focus mode
+        if (!camera.userData.focusMode) {
+          camera.position.copy(newPosition);
+        }
+      }
     };
 
     // Touch controls for mobile
@@ -416,8 +515,10 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
           return;
         }
         
-        // Planets orbit the Sun
-        const orbitalSpeed = 0.005 / Math.sqrt(planetInfo.data.distance_from_sun_au);
+        // Planets orbit the Sun with realistic speeds based on Kepler's laws
+        // Closer planets move faster, farther planets move slower
+        const baseSpeed = 0.002; // Reduced base speed for more realistic motion
+        const orbitalSpeed = baseSpeed / Math.pow(planetInfo.data.distance_from_sun_au, 1.5); // Kepler's third law approximation
         planetInfo.angle += orbitalSpeed;
         planetInfo.mesh.position.x = Math.cos(planetInfo.angle) * planetInfo.distance;
         planetInfo.mesh.position.z = Math.sin(planetInfo.angle) * planetInfo.distance;
@@ -452,8 +553,13 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
 
     // Focus on planet function
     const focusOnPlanet = (planetName) => {
+      console.log('focusOnPlanet called with:', planetName);
+      console.log('Available planets:', Object.keys(planetsRef.current));
+      
       const planetInfo = planetsRef.current[planetName];
       if (planetInfo && planetInfo.mesh) {
+        console.log('Planet found:', planetName, 'angle:', planetInfo.angle, 'distance:', planetInfo.distance);
+        
         const planet = planetInfo.mesh;
         const distance = planetName === 'Sun' ? 50 : 20;
         
@@ -462,13 +568,15 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
           onLocationChange(planetName);
         }
         
-        // Calculate target camera position
+        // Calculate target camera position using the planet's current orbital angle
         const planetPosition = planet.position.clone();
         const targetCameraDistance = distance;
         
-        // Calculate spherical coordinates for the target position
-        const targetTheta = Math.atan2(planetPosition.z, planetPosition.x);
+        // Use the planet's orbital angle for proper targeting
+        const targetTheta = planetName === 'Sun' ? 0 : planetInfo.angle;
         const targetPhi = 0; // Keep at equator level
+        
+        console.log('Target theta:', targetTheta, 'Target phi:', targetPhi, 'Distance:', targetCameraDistance);
         
         // Animate to target position
         const startTargetX = targetX;
@@ -495,11 +603,20 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
         };
         
         animateCamera();
+      } else {
+        console.log('Planet not found:', planetName);
       }
     };
 
     // Make focusOnPlanet available to the imperative handle
     window.focusOnPlanetRef = focusOnPlanet;
+
+    // Add event listener for custom focusOnPlanet event as fallback
+    const handleFocusOnPlanetEvent = (event) => {
+      const { planetName } = event.detail;
+      focusOnPlanet(planetName);
+    };
+    window.addEventListener('focusOnPlanet', handleFocusOnPlanetEvent);
 
     // Handle window resize
     const handleResize = () => {
@@ -513,6 +630,7 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('focusOnPlanet', handleFocusOnPlanetEvent);
       renderer.domElement.removeEventListener('mousedown', handleMouseDown);
       renderer.domElement.removeEventListener('mousemove', handleMouseMove);
       renderer.domElement.removeEventListener('mouseup', handleMouseUp);

@@ -82,7 +82,8 @@ const EnhancedGalaxyView = ({ onLocationChange }) => {
         targetX += deltaX * 0.005;
         targetY += deltaY * 0.005;
         
-        targetY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetY));
+        // Allow full 360-degree rotation - remove Y constraint
+        // targetY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetY));
         
         mouseX = event.clientX;
         mouseY = event.clientY;
@@ -134,7 +135,8 @@ const EnhancedGalaxyView = ({ onLocationChange }) => {
       targetX += deltaX * 0.005;
       targetY += deltaY * 0.005;
       
-      targetY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetY));
+      // Allow full 360-degree rotation - remove Y constraint
+      // targetY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetY));
       
       mouseX = event.touches[0].clientX;
       mouseY = event.touches[0].clientY;
@@ -210,20 +212,22 @@ const EnhancedGalaxyView = ({ onLocationChange }) => {
     const galaxyGroup = new THREE.Group();
     galaxyRef.current = galaxyGroup;
 
-    // Parameters for spiral galaxy
+    // Enhanced parameters for Milky Way-like spiral galaxy
     const parameters = {
-      count: 100000,
-      size: 0.01,
-      radius: 5000,
-      branches: 4,
-      spin: 1,
-      randomness: 0.2,
-      randomnessPower: 3,
-      insideColor: '#ff6030',
-      outsideColor: '#1b3984'
+      count: 150000,
+      size: 0.015,
+      radius: 6000,
+      branches: 2, // Milky Way has 2 main spiral arms
+      spin: 1.2,
+      randomness: 0.3,
+      randomnessPower: 2.5,
+      insideColor: '#ffaa44',
+      outsideColor: '#1b3984',
+      barLength: 1500, // Central bar structure
+      barWidth: 400
     };
 
-    // Create galaxy geometry
+    // Create main spiral galaxy geometry
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(parameters.count * 3);
     const colors = new Float32Array(parameters.count * 3);
@@ -234,22 +238,44 @@ const EnhancedGalaxyView = ({ onLocationChange }) => {
     for (let i = 0; i < parameters.count; i++) {
       const i3 = i * 3;
 
-      // Position
-      const radius = Math.random() * parameters.radius;
-      const spinAngle = radius * parameters.spin;
+      // Position with more realistic distribution
+      const radius = Math.pow(Math.random(), 0.7) * parameters.radius;
+      const spinAngle = radius * parameters.spin * 0.0008; // More realistic spiral tightness
       const branchAngle = (i % parameters.branches) / parameters.branches * Math.PI * 2;
 
+      // Add central bar structure (like Milky Way)
+      let x, z;
+      if (radius < parameters.barLength && Math.random() < 0.3) {
+        // Central bar
+        const barAngle = Math.PI * 0.25; // 45-degree bar
+        const barRadius = Math.random() * parameters.barLength;
+        x = Math.cos(barAngle) * barRadius;
+        z = Math.sin(barAngle) * barRadius;
+      } else {
+        // Spiral arms
+        x = Math.cos(branchAngle + spinAngle) * radius;
+        z = Math.sin(branchAngle + spinAngle) * radius;
+      }
+
       const randomX = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
-      const randomY = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius * 0.1;
+      const randomY = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius * 0.05;
       const randomZ = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
 
-      positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
+      positions[i3] = x + randomX;
       positions[i3 + 1] = randomY;
-      positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+      positions[i3 + 2] = z + randomZ;
 
-      // Color
+      // Enhanced color distribution
       const mixedColor = colorInside.clone();
-      mixedColor.lerp(colorOutside, radius / parameters.radius);
+      const colorMix = Math.min(radius / parameters.radius, 1);
+      mixedColor.lerp(colorOutside, colorMix);
+
+      // Add some variation for different star types
+      if (Math.random() < 0.1) {
+        mixedColor.lerp(new THREE.Color('#ffffff'), 0.5); // White giants
+      } else if (Math.random() < 0.05) {
+        mixedColor.lerp(new THREE.Color('#ff4444'), 0.7); // Red giants
+      }
 
       colors[i3] = mixedColor.r;
       colors[i3 + 1] = mixedColor.g;
@@ -259,41 +285,139 @@ const EnhancedGalaxyView = ({ onLocationChange }) => {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    // Material
+    // Enhanced material
     const material = new THREE.PointsMaterial({
       size: parameters.size,
       sizeAttenuation: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
-      vertexColors: true
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.8
     });
 
     // Points
     const points = new THREE.Points(geometry, material);
     galaxyGroup.add(points);
 
-    // Add galactic core
-    const coreGeometry = new THREE.SphereGeometry(50, 32, 32);
+    // Enhanced galactic core (Sagittarius A*)
+    const coreGeometry = new THREE.SphereGeometry(80, 32, 32);
     const coreMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffaa44,
+      color: 0xffdd44,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.9
     });
     const core = new THREE.Mesh(coreGeometry, coreMaterial);
     galaxyGroup.add(core);
 
     // Add galactic halo
-    const haloGeometry = new THREE.SphereGeometry(6000, 64, 64);
+    const haloGeometry = new THREE.SphereGeometry(8000, 32, 32);
     const haloMaterial = new THREE.MeshBasicMaterial({
-      color: 0x1a1a2e,
+      color: 0x2244aa,
       transparent: true,
-      opacity: 0.1,
+      opacity: 0.02,
       side: THREE.BackSide
     });
     const halo = new THREE.Mesh(haloGeometry, haloMaterial);
     galaxyGroup.add(halo);
 
+    // Add dust lanes
+    createDustLanes(galaxyGroup);
+    
+    // Add labels for galactic structures
+    createGalacticLabels(scene, galaxyGroup);
+
     scene.add(galaxyGroup);
+  }
+
+  // Function to create dust lanes
+  function createDustLanes(galaxyGroup) {
+    const dustGeometry = new THREE.BufferGeometry();
+    const dustCount = 20000;
+    const dustPositions = new Float32Array(dustCount * 3);
+    const dustColors = new Float32Array(dustCount * 3);
+
+    for (let i = 0; i < dustCount; i++) {
+      const i3 = i * 3;
+      const radius = Math.random() * 4000 + 500;
+      const angle = Math.random() * Math.PI * 2;
+      
+      dustPositions[i3] = Math.cos(angle) * radius;
+      dustPositions[i3 + 1] = (Math.random() - 0.5) * 50; // Thin disk
+      dustPositions[i3 + 2] = Math.sin(angle) * radius;
+
+      // Dark dust color
+      dustColors[i3] = 0.1;
+      dustColors[i3 + 1] = 0.05;
+      dustColors[i3 + 2] = 0.02;
+    }
+
+    dustGeometry.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+    dustGeometry.setAttribute('color', new THREE.BufferAttribute(dustColors, 3));
+
+    const dustMaterial = new THREE.PointsMaterial({
+      size: 0.02,
+      sizeAttenuation: true,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.6
+    });
+
+    const dustLanes = new THREE.Points(dustGeometry, dustMaterial);
+    galaxyGroup.add(dustLanes);
+  }
+
+  // Function to create galactic labels
+  function createGalacticLabels(scene, galaxyGroup) {
+    const labels = [
+      { name: 'Sagittarius A* (Galactic Core)', position: [0, 0, 0], color: '#ffdd44' },
+      { name: 'Perseus Arm', position: [3000, 0, 2000], color: '#88aaff' },
+      { name: 'Scutum-Centaurus Arm', position: [-2500, 0, 3000], color: '#88aaff' },
+      { name: 'Norma Arm', position: [1500, 0, -3500], color: '#88aaff' },
+      { name: 'Sagittarius Arm', position: [-3500, 0, -1500], color: '#88aaff' },
+      { name: 'Orion Spur (Our Location)', position: [1200, 0, 2800], color: '#ffaa44' },
+      { name: 'Galactic Halo', position: [0, 4000, 0], color: '#aaccff' },
+      { name: 'Central Bar', position: [800, 0, 800], color: '#ffcc66' },
+      { name: 'Outer Rim', position: [5000, 0, 0], color: '#6688aa' }
+    ];
+
+    labels.forEach((labelData) => {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = 512;
+      canvas.height = 128;
+
+      // Transparent background
+      context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      
+      context.fillStyle = labelData.color;
+      context.font = 'bold 24px Arial';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      
+      // Add glow effect
+      context.shadowColor = labelData.color;
+      context.shadowBlur = 10;
+      
+      context.fillText(labelData.name, 256, 64);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMaterial = new THREE.SpriteMaterial({ 
+        map: texture,
+        transparent: true,
+        opacity: 0.8
+      });
+      const sprite = new THREE.Sprite(spriteMaterial);
+      
+      sprite.position.set(labelData.position[0], labelData.position[1], labelData.position[2]);
+      sprite.scale.set(800, 200, 1);
+      
+      // Make labels always face camera
+      sprite.userData = { isLabel: true };
+      
+      scene.add(sprite);
+    });
   }
 
   // Function to create background stars
