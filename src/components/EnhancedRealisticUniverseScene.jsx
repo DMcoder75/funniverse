@@ -27,14 +27,12 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
         const planetPosition = planetInfo.mesh.position.clone();
         console.log('Planet position:', planetPosition);
         
-        // Calculate target camera angles and distance based on planet type
-        let targetTheta, targetPhi, targetDistance;
+        // Calculate target camera position based on planet type
+        let targetPosition;
         
         if (planetName === 'Sun') {
           // For Sun, position camera at a fixed distance
-          targetTheta = 0;
-          targetPhi = 0.3;
-          targetDistance = 120;
+          targetPosition = new THREE.Vector3(0, 30, 120);
         } else {
           // For planets, calculate position based on their orbital location
           const distance = planetInfo.distance || 100;
@@ -47,36 +45,38 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
             planetPosition: planetPosition
           });
           
-          // Position camera to look at the planet
-          targetTheta = angle + Math.PI / 4; // Offset for better viewing angle
-          targetPhi = 0.2; // Slight elevation
-          targetDistance = Math.max(distance * 0.3, 30); // Distance based on planet's orbit
+          // Position camera to look at the planet from a good angle
+          const cameraDistance = Math.max(distance * 0.4, 40); // Distance based on planet's orbit
+          const offsetAngle = angle + Math.PI / 3; // Offset for better viewing angle
           
-          console.log('Calculated camera angles:', {
-            targetTheta: targetTheta,
-            targetPhi: targetPhi,
-            targetDistance: targetDistance
+          targetPosition = new THREE.Vector3(
+            Math.cos(offsetAngle) * cameraDistance,
+            20, // Slight elevation
+            Math.sin(offsetAngle) * cameraDistance
+          );
+          
+          console.log('Calculated target position:', {
+            offsetAngle: offsetAngle,
+            cameraDistance: cameraDistance,
+            targetPosition: targetPosition
           });
         }
         
         // Get current camera
         const camera = cameraRef.current;
         if (camera) {
+          console.log('Camera found, starting animation');
+          
           // Set camera focus mode to prevent interference from mouse controls
           camera.userData.focusMode = true;
+          console.log('Focus mode set to:', camera.userData.focusMode);
           
-          // Get current angles from camera position
-          const currentDistance = Math.sqrt(
-            camera.position.x * camera.position.x + 
-            camera.position.y * camera.position.y + 
-            camera.position.z * camera.position.z
-          );
-          const currentTheta = Math.atan2(camera.position.z, camera.position.x);
-          const currentPhi = Math.asin(camera.position.y / currentDistance);
-          
-          // Animate to target angles using the existing animation system
+          // Animate camera to target position
+          const startPosition = camera.position.clone();
           const startTime = Date.now();
           const duration = 2000; // 2 seconds
+          
+          console.log('Starting animation from:', startPosition, 'to:', targetPosition);
           
           const animateCamera = () => {
             const elapsed = Date.now() - startTime;
@@ -85,25 +85,35 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
             // Smooth easing
             const easeProgress = 1 - Math.pow(1 - progress, 3);
             
-            // Update the local camera control variables
-            targetX = currentTheta + (targetTheta - currentTheta) * easeProgress;
-            targetY = currentPhi + (targetPhi - currentPhi) * easeProgress;
-            cameraDistance = currentDistance + (targetDistance - currentDistance) * easeProgress;
+            // Interpolate camera position directly
+            camera.position.lerpVectors(startPosition, targetPosition, easeProgress);
+            
+            // Always look at the planet (or Sun center)
+            const lookAtTarget = planetName === 'Sun' ? new THREE.Vector3(0, 0, 0) : planetPosition;
+            camera.lookAt(lookAtTarget);
+            
+            console.log('Animation progress:', progress, 'Camera position:', camera.position);
             
             if (progress < 1) {
               requestAnimationFrame(animateCamera);
             } else {
-              // Ensure final position
-              targetX = targetTheta;
-              targetY = targetPhi;
-              cameraDistance = targetDistance;
+              // Ensure final position and look direction
+              camera.position.copy(targetPosition);
+              camera.lookAt(lookAtTarget);
               
-              // Clear focus mode immediately after animation completes
-              camera.userData.focusMode = false;
+              console.log('Animation complete, final position:', camera.position);
+              
+              // Clear focus mode after a short delay to allow user control
+              setTimeout(() => {
+                camera.userData.focusMode = false;
+                console.log('Focus mode cleared');
+              }, 100);
             }
           };
           
           animateCamera();
+        } else {
+          console.log('Camera not found in cameraRef.current');
         }
       } else {
         console.log('Planet not found:', planetName, 'Available planets:', Object.keys(planetsRef.current));
@@ -525,6 +535,11 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
         camera.position.y = Math.sin(targetY) * cameraDistance;
         camera.position.z = Math.sin(targetX) * Math.cos(targetY) * cameraDistance;
         camera.lookAt(0, 0, 0);
+      } else {
+        // Debug: log when focus mode is active
+        if (camera.userData.focusMode) {
+          console.log('Animation loop: Focus mode active, skipping camera update');
+        }
       }
 
       // Animate stars for dynamic background
