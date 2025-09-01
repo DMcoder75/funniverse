@@ -27,29 +27,37 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
         const planetPosition = planetInfo.mesh.position.clone();
         console.log('Planet position:', planetPosition);
         
-        // Calculate camera target position based on planet type
-        let cameraTargetPosition;
+        // Calculate target camera angles and distance based on planet type
+        let targetTheta, targetPhi, targetDistance;
         
         if (planetName === 'Sun') {
           // For Sun, position camera at a fixed distance
-          cameraTargetPosition = new THREE.Vector3(0, 30, 120);
+          targetTheta = 0;
+          targetPhi = 0.3;
+          targetDistance = 120;
         } else {
           // For planets, calculate position based on their orbital location
           const distance = planetInfo.distance || 100;
           const angle = planetInfo.angle || 0;
           
-          // Position camera slightly outside the planet's orbit
-          const cameraDistance = 25; // Fixed distance from planet
-          const offsetAngle = angle + Math.PI / 4; // Offset for better viewing angle
+          console.log('Planet data:', {
+            name: planetName,
+            distance: distance,
+            angle: angle,
+            planetPosition: planetPosition
+          });
           
-          cameraTargetPosition = new THREE.Vector3(
-            Math.cos(offsetAngle) * (distance + cameraDistance),
-            15, // Slight elevation
-            Math.sin(offsetAngle) * (distance + cameraDistance)
-          );
+          // Position camera to look at the planet
+          targetTheta = angle + Math.PI / 4; // Offset for better viewing angle
+          targetPhi = 0.2; // Slight elevation
+          targetDistance = Math.max(distance * 0.3, 30); // Distance based on planet's orbit
+          
+          console.log('Calculated camera angles:', {
+            targetTheta: targetTheta,
+            targetPhi: targetPhi,
+            targetDistance: targetDistance
+          });
         }
-        
-        console.log('Camera target position:', cameraTargetPosition);
         
         // Get current camera
         const camera = cameraRef.current;
@@ -57,8 +65,16 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
           // Set camera focus mode to prevent interference from mouse controls
           camera.userData.focusMode = true;
           
-          // Animate camera to target position
-          const startPosition = camera.position.clone();
+          // Get current angles from camera position
+          const currentDistance = Math.sqrt(
+            camera.position.x * camera.position.x + 
+            camera.position.y * camera.position.y + 
+            camera.position.z * camera.position.z
+          );
+          const currentTheta = Math.atan2(camera.position.z, camera.position.x);
+          const currentPhi = Math.asin(camera.position.y / currentDistance);
+          
+          // Animate to target angles using the existing animation system
           const startTime = Date.now();
           const duration = 2000; // 2 seconds
           
@@ -69,19 +85,18 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
             // Smooth easing
             const easeProgress = 1 - Math.pow(1 - progress, 3);
             
-            // Interpolate camera position
-            camera.position.lerpVectors(startPosition, cameraTargetPosition, easeProgress);
-            
-            // Always look at the planet (or Sun)
-            const lookAtTarget = planetName === 'Sun' ? new THREE.Vector3(0, 0, 0) : planetPosition;
-            camera.lookAt(lookAtTarget);
+            // Update the local camera control variables
+            targetX = currentTheta + (targetTheta - currentTheta) * easeProgress;
+            targetY = currentPhi + (targetPhi - currentPhi) * easeProgress;
+            cameraDistance = currentDistance + (targetDistance - currentDistance) * easeProgress;
             
             if (progress < 1) {
               requestAnimationFrame(animateCamera);
             } else {
-              // Ensure final position and look direction
-              camera.position.copy(cameraTargetPosition);
-              camera.lookAt(lookAtTarget);
+              // Ensure final position
+              targetX = targetTheta;
+              targetY = targetPhi;
+              cameraDistance = targetDistance;
               
               // Clear focus mode immediately after animation completes
               camera.userData.focusMode = false;
