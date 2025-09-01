@@ -10,6 +10,7 @@ function App() {
   const [currentLocation, setCurrentLocation] = useState('Solar System')
   const [viewMode, setViewMode] = useState('universe') // 'universe', 'earth', or 'galaxy'
   const sceneRef = useRef(null)
+  const galaxyRef = useRef(null)
 
   const handleNavigateTo = (location) => {
     if (location === 'Earth View') {
@@ -18,6 +19,12 @@ function App() {
     } else if (location === 'Galaxy View') {
       setViewMode('galaxy')
       setCurrentLocation('Galaxy Overview')
+    } else if (viewMode === 'galaxy') {
+      // Handle galaxy region navigation
+      setCurrentLocation(location)
+      if (galaxyRef.current) {
+        galaxyRef.current.navigateToGalaxyRegion(location)
+      }
     } else {
       setViewMode('universe')
       setCurrentLocation(location)
@@ -49,6 +56,7 @@ function App() {
         />
       ) : (
         <EnhancedGalaxyView 
+          ref={galaxyRef}
           onLocationChange={handleLocationChange}
         />
       )}

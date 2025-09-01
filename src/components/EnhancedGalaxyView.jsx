@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import * as THREE from 'three';
 
-const EnhancedGalaxyView = ({ onLocationChange }) => {
+const EnhancedGalaxyView = forwardRef(({ onLocationChange }, ref) => {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
@@ -9,6 +9,73 @@ const EnhancedGalaxyView = ({ onLocationChange }) => {
   const galaxyRef = useRef(null);
   const animationIdRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Galaxy navigation positions
+  const galaxyPositions = {
+    'Galactic Center': { x: 0, y: 0, z: 0, distance: 500 },
+    'Perseus Arm': { x: -3000, y: 200, z: -1500, distance: 2000 },
+    'Sagittarius Arm': { x: 2000, y: -300, z: 2500, distance: 1800 },
+    'Orion Arm': { x: -1000, y: 100, z: 1200, distance: 1500 },
+    'Outer Rim': { x: 0, y: 500, z: 5000, distance: 3000 },
+    'Galactic Halo': { x: 0, y: 8000, z: 0, distance: 6000 }
+  };
+
+  useImperativeHandle(ref, () => ({
+    navigateToGalaxyRegion: (regionName) => {
+      console.log('Navigating to galaxy region:', regionName);
+      
+      const position = galaxyPositions[regionName];
+      if (position && cameraRef.current) {
+        console.log('Galaxy region found:', regionName, position);
+        
+        // Update location immediately
+        if (onLocationChange) {
+          onLocationChange(regionName);
+        }
+        
+        // Animate camera to the target position
+        const camera = cameraRef.current;
+        const startPosition = camera.position.clone();
+        const targetPosition = new THREE.Vector3(position.x, position.y, position.z);
+        
+        // Calculate camera position at appropriate distance from target
+        const direction = targetPosition.clone().normalize();
+        const cameraPosition = targetPosition.clone().add(direction.multiplyScalar(position.distance));
+        
+        console.log('Animating camera from:', startPosition, 'to:', cameraPosition);
+        
+        // Smooth animation
+        const animateToTarget = () => {
+          const startTime = Date.now();
+          const duration = 3000; // 3 seconds
+          
+          const animateStep = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Smooth easing
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            
+            // Interpolate camera position
+            camera.position.lerpVectors(startPosition, cameraPosition, easeProgress);
+            camera.lookAt(targetPosition);
+            
+            if (progress < 1) {
+              requestAnimationFrame(animateStep);
+            } else {
+              console.log('Galaxy navigation animation complete');
+            }
+          };
+          
+          animateStep();
+        };
+        
+        animateToTarget();
+      } else {
+        console.log('Galaxy region not found:', regionName, 'Available regions:', Object.keys(galaxyPositions));
+      }
+    }
+  }), [onLocationChange]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -506,7 +573,7 @@ const EnhancedGalaxyView = ({ onLocationChange }) => {
       )}
     </div>
   );
-};
+});
 
 export default EnhancedGalaxyView;
 

@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Home, Zap, Globe, Rocket, ArrowLeft, Earth, Star } from 'lucide-react';
+import { Home, Zap, Globe, Rocket, ArrowLeft, Earth, Star, Sparkles, Circle, Target, Compass } from 'lucide-react';
 
 const NavigationPanel = ({ onNavigateTo, currentLocation, viewMode, onBackToUniverse }) => {
   const locations = [
@@ -14,6 +14,15 @@ const NavigationPanel = ({ onNavigateTo, currentLocation, viewMode, onBackToUniv
     { name: 'Uranus', icon: Zap, color: 'text-cyan-400' },
     { name: 'Neptune', icon: Zap, color: 'text-blue-600' },
     { name: 'Sun', icon: Zap, color: 'text-yellow-400' }
+  ];
+
+  const galaxyLocations = [
+    { name: 'Galactic Center', icon: Target, color: 'text-yellow-500' },
+    { name: 'Perseus Arm', icon: Compass, color: 'text-blue-400' },
+    { name: 'Sagittarius Arm', icon: Compass, color: 'text-purple-400' },
+    { name: 'Orion Arm', icon: Compass, color: 'text-green-400' },
+    { name: 'Outer Rim', icon: Circle, color: 'text-cyan-400' },
+    { name: 'Galactic Halo', icon: Sparkles, color: 'text-pink-400' }
   ];
 
   return (
@@ -40,12 +49,37 @@ const NavigationPanel = ({ onNavigateTo, currentLocation, viewMode, onBackToUniv
               <ArrowLeft className="w-4 h-4" />
               Back to Universe
             </Button>
+            
+            {viewMode === 'galaxy' && (
+              <div className="space-y-2">
+                <div className="text-xs text-gray-300 font-semibold">Galaxy Regions:</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {galaxyLocations.map((location) => {
+                    const IconComponent = location.icon;
+                    return (
+                      <Button
+                        key={location.name}
+                        variant="outline"
+                        size="sm"
+                        className="justify-start gap-2 bg-gray-800/50 border-gray-600 hover:bg-gray-700/50 text-white"
+                        onClick={() => onNavigateTo(location.name)}
+                      >
+                        <IconComponent className={`w-4 h-4 ${location.color}`} />
+                        <span className="text-xs">{location.name}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
             <div className="text-xs text-gray-400 p-2 bg-gray-800/30 rounded">
               <p><strong>{viewMode === 'earth' ? 'Earth View' : 'Galaxy View'} Controls:</strong></p>
               <p>• Mouse: Rotate view</p>
               <p>• Scroll: Zoom in/out</p>
               {viewMode === 'earth' && <p>• Zoom from space to surface</p>}
               {viewMode === 'galaxy' && <p>• Explore galactic structures</p>}
+              {viewMode === 'galaxy' && <p>• Buttons: Navigate to regions</p>}
             </div>
           </div>
         ) : (
