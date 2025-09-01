@@ -133,6 +133,8 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
     };
 
     // Create all planets with realistic appearance
+    const textureLoader = new THREE.TextureLoader(); // Moved textureLoader outside the loop
+
     Object.entries(astronomicalData).forEach(([name, data]) => {
       if (name === 'Moon') return;
 
@@ -144,7 +146,6 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       let material;
 
       if (name === 'Earth') {
-        const textureLoader = new THREE.TextureLoader();
         const earthDiffuseTexture = textureLoader.load(config.texture);
         const earthPlantsTexture = textureLoader.load(config.plantsTexture);
         
@@ -175,8 +176,14 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
         });
         material = earthShaderMaterial;
       } else if (config.texture) {
-        const textureLoader = new THREE.TextureLoader();
-        const planetTexture = textureLoader.load(config.texture);
+        const planetTexture = textureLoader.load(config.texture, 
+          // onLoad callback
+          () => {},
+          // onProgress callback
+          undefined,
+          // onError callback
+          (err) => { console.error('Error loading texture:', config.texture, err); }
+        );
         material = new THREE.MeshStandardMaterial({ 
           map: planetTexture,
           metalness: 0.1,
@@ -227,15 +234,17 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       const context = canvas.getContext('2d');
       canvas.width = 256;
       canvas.height = 64;
-      // No fillStyle for background, so it's transparent
-      // context.fillStyle = 'white'; // Removed to make background transparent
+      
+      // Clear the canvas to ensure transparency
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
       context.font = 'bold 24px Arial';
       context.textAlign = 'center';
       context.fillStyle = 'white'; // Set fillStyle for text color
       context.fillText(name, 128, 32);
 
       const texture = new THREE.CanvasTexture(canvas);
-      const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true }); // Add transparent: true
+      const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true }); 
       const sprite = new THREE.Sprite(spriteMaterial);
       sprite.position.copy(planet.position);
       sprite.position.y += radius * 3;
