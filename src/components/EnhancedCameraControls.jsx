@@ -1,7 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
-
-const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange }) => {
+import { useEffect, useRef, useState } => {
   const controlsRef = useRef({
     isMouseDown: false,
     mouseX: 0,
@@ -11,7 +8,12 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
     distance: 50,
     targetDistance: 50,
     focusTarget: null,
-    isAnimating: false
+    isAnimating: false,
+    // New: for 360-degree rotation
+    rotationX: 0,
+    rotationY: 0,
+    targetRotationX: 0,
+    targetRotationY: 0
   });
 
   const [isSurfaceView, setSurfaceView] = useState(false);
@@ -41,16 +43,16 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
       const deltaX = event.clientX - controls.mouseX;
       const deltaY = event.clientY - controls.mouseY;
 
-      controls.targetX += deltaX * 0.01;
-      controls.targetY += deltaY * 0.01;
+      // Update target rotation for 360-degree movement
+      controls.targetRotationY += deltaX * 0.005; // Horizontal rotation
+      controls.targetRotationX += deltaY * 0.005; // Vertical rotation
 
-      // Limit vertical rotation
-      controls.targetY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, controls.targetY));
+      // Limit vertical rotation to prevent camera flipping
+      controls.targetRotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, controls.targetRotationX));
 
       controls.mouseX = event.clientX;
       controls.mouseY = event.clientY;
 
-      // Update camera position immediately for responsive feel
       updateCameraPosition();
     };
 
@@ -82,28 +84,25 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
         const target = planets[controls.focusTarget].mesh;
         const targetPos = target.position.clone();
         
-        if (isSurfaceView) {
-          // Surface view: Position camera on the surface
-          const surfacePosition = targetPos.clone().add(new THREE.Vector3(0, planets[controls.focusTarget].radius + 1, 0));
-          camera.position.copy(surfacePosition);
-          const lookAtTarget = targetPos.clone().add(new THREE.Vector3(1, planets[controls.focusTarget].radius + 1, 0));
-          camera.lookAt(lookAtTarget);
-        } else {
-          // Orbit view
-          const x = targetPos.x + controls.distance * Math.cos(controls.targetY) * Math.cos(controls.targetX);
-          const y = targetPos.y + controls.distance * Math.sin(controls.targetY);
-          const z = targetPos.z + controls.distance * Math.cos(controls.targetY) * Math.sin(controls.targetX);
-          
-          camera.position.set(x, y, z);
-          camera.lookAt(targetPos);
-        }
+        // Calculate camera position based on 360-degree rotation
+        const spherical = new THREE.Spherical();
+        spherical.setFromVector3(camera.position.clone().sub(targetPos));
+        spherical.theta = controls.rotationY; // Horizontal angle
+        spherical.phi = controls.rotationX + Math.PI / 2; // Vertical angle (offset by PI/2 for typical camera orientation)
+        spherical.radius = controls.distance;
+
+        camera.position.setFromSpherical(spherical).add(targetPos);
+        camera.lookAt(targetPos);
+
       } else {
         // Default solar system view
-        const x = controls.distance * Math.cos(controls.targetY) * Math.cos(controls.targetX);
-        const y = controls.distance * Math.sin(controls.targetY);
-        const z = controls.distance * Math.cos(controls.targetY) * Math.sin(controls.targetX);
-        
-        camera.position.set(x, y, z);
+        const spherical = new THREE.Spherical();
+        spherical.setFromVector3(camera.position);
+        spherical.theta = controls.rotationY;
+        spherical.phi = controls.rotationX + Math.PI / 2;
+        spherical.radius = controls.distance;
+
+        camera.position.setFromSpherical(spherical);
         camera.lookAt(0, 0, 0);
       }
     };
@@ -114,41 +113,49 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
       const distanceDiff = controls.targetDistance - controls.distance;
       if (Math.abs(distanceDiff) > 0.1) {
         controls.distance += distanceDiff * 0.1;
-        updateCameraPosition();
       }
-      
+
+      // Smooth rotation interpolation
+      const rotationXDiff = controls.targetRotationX - controls.rotationX;
+      const rotationYDiff = controls.targetRotationY - controls.rotationY;
+      if (Math.abs(rotationXDiff) > 0.001 || Math.abs(rotationYDiff) > 0.001) {
+        controls.rotationX += rotationXDiff * 0.1;
+        controls.rotationY += rotationYDiff * 0.1;
+      }
+
+      updateCameraPosition();
       requestAnimationFrame(animate);
     };
 
     animate();
 
     const canvas = renderer.domElement;
-    canvas.addEventListener('mousedown', onMouseDown);
-    canvas.addEventListener('mouseup', onMouseUp);
-    canvas.addEventListener('mousemove', onMouseMove);
-    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener("mousedown", onMouseDown);
+    canvas.addEventListener("mouseup", onMouseUp);
+    canvas.addEventListener("mousemove", onMouseMove);
+    canvas.addEventListener("wheel", onWheel, { passive: false });
 
     return () => {
-      canvas.removeEventListener('mousedown', onMouseDown);
-      canvas.removeEventListener('mouseup', onMouseUp);
-      canvas.removeEventListener('mousemove', onMouseMove);
-      canvas.removeEventListener('wheel', onWheel);
+      canvas.removeEventListener("mousedown", onMouseDown);
+      canvas.removeEventListener("mouseup", onMouseUp);
+      canvas.removeEventListener("mousemove", onMouseMove);
+      canvas.removeEventListener("wheel", onWheel);
     };
   }, [camera, renderer, planets, isSurfaceView]);
 
   // Expose focus method
   useEffect(() => {
     if (camera && renderer) {
-      window.focusOnPlanet = (planetName, viewType = 'orbit') => {
+      window.focusOnPlanet = (planetName, viewType = "orbit") => {
         const controls = controlsRef.current;
-        setSurfaceView(viewType === 'surface');
+        setSurfaceView(viewType === "surface");
         
-        if (planetName === 'Sun' || planetName === 'Solar System') {
+        if (planetName === "Sun" || planetName === "Solar System") {
           // Focus on solar system center
           controls.focusTarget = null;
           controls.targetDistance = 50;
-          controls.targetX = 0;
-          controls.targetY = 0;
+          controls.targetRotationX = 0;
+          controls.targetRotationY = 0;
           controls.isAnimating = true;
           
           // Smooth transition to solar system view
@@ -170,6 +177,8 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
             } else {
               controls.isAnimating = false;
               controls.distance = 50;
+              controls.rotationX = 0;
+              controls.rotationY = 0;
             }
           };
           
@@ -180,7 +189,7 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
           // Focus on specific planet
           controls.focusTarget = planetName;
           const targetData = planets[planetName];
-          controls.targetDistance = targetData.radius * (viewType === 'surface' ? 1.5 : 5);
+          controls.targetDistance = targetData.radius * (viewType === "surface" ? 1.5 : 5);
           controls.isAnimating = true;
           
           // Smooth transition to planet
@@ -207,6 +216,11 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
             } else {
               controls.isAnimating = false;
               controls.distance = controls.targetDistance;
+              // Reset rotation for new focus
+              controls.rotationX = 0;
+              controls.rotationY = 0;
+              controls.targetRotationX = 0;
+              controls.targetRotationY = 0;
             }
           };
           

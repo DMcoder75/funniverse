@@ -21,15 +21,15 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
 
     // Add stars background
     const starsGeometry = new THREE.BufferGeometry();
-    const starsCount = 15000;
+    const starsCount = 50000; // Increased star count for a richer background
     const starsPositions = new Float32Array(starsCount * 3);
     const starsColors = new Float32Array(starsCount * 3);
     
     for (let i = 0; i < starsCount; i++) {
       // Position
-      starsPositions[i * 3] = (Math.random() - 0.5) * 2000;
-      starsPositions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
-      starsPositions[i * 3 + 2] = (Math.random() - 0.5) * 2000;
+      starsPositions[i * 3] = (Math.random() - 0.5) * 4000; // Increased range
+      starsPositions[i * 3 + 1] = (Math.random() - 0.5) * 4000;
+      starsPositions[i * 3 + 2] = (Math.random() - 0.5) * 4000;
       
       // Color variation for more realistic stars
       const starType = Math.random();
@@ -54,10 +54,10 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
     starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
     starsGeometry.setAttribute('color', new THREE.BufferAttribute(starsColors, 3));
     const starsMaterial = new THREE.PointsMaterial({ 
-      size: 0.8, 
+      size: 1.0, // Slightly larger stars
       vertexColors: true,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.9
     });
     const stars = new THREE.Points(starsGeometry, starsMaterial);
     scene.add(stars);
@@ -87,12 +87,16 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
     mountRef.current.appendChild(renderer.domElement);
 
     // Realistic lighting
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.2); // Slightly brighter ambient light
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.3); // Slightly brighter ambient light
     scene.add(ambientLight);
 
-    const sunLight = new THREE.PointLight(0xfff8dc, 3, 0);
+    const sunLight = new THREE.PointLight(0xfff8dc, 5, 0); // Brighter sun light
     sunLight.position.set(0, 0, 0);
     sunLight.castShadow = true; // Sun casts shadows
+    sunLight.shadow.mapSize.width = 1024; // Increased shadow map resolution
+    sunLight.shadow.mapSize.height = 1024;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 500;
     scene.add(sunLight);
 
     // Create realistic Sun
@@ -116,14 +120,14 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
 
     // Realistic planet colors and materials
     const planetConfigs = {
-      Mercury: { color: 0x8c7853, emissive: 0x000000 },
-      Venus: { color: 0xffc649, emissive: 0x332200 },
-      Earth: { color: 0x0077be, emissive: 0x001122 }, // More vibrant blue
-      Mars: { color: 0xcd5c5c, emissive: 0x220000 },
-      Jupiter: { color: 0xd2b48c, emissive: 0x221100 },
-      Saturn: { color: 0xfad5a5, emissive: 0x221100 },
-      Uranus: { color: 0x4fd0e7, emissive: 0x001122 },
-      Neptune: { color: 0x4b70dd, emissive: 0x000022 }
+      Mercury: { texture: '/assets/textures/mercury_diffuse.jpg' },
+      Venus: { texture: '/assets/textures/venus_diffuse.jpg' },
+      Earth: { texture: '/assets/textures/earth_diffuse.jpg', plantsTexture: '/assets/textures/earth_plants.jpg' },
+      Mars: { texture: '/assets/textures/mars_diffuse.jpg' },
+      Jupiter: { texture: '/assets/textures/jupiter_diffuse.jpg' },
+      Saturn: { texture: '/assets/textures/saturn_diffuse.jpg' },
+      Uranus: { texture: '/assets/textures/uranus_diffuse.jpg' },
+      Neptune: { texture: '/assets/textures/neptune_diffuse.jpg' }
     };
 
     // Create all planets with realistic appearance
@@ -134,31 +138,48 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       const distance = data.distance_from_sun_au * AU_TO_SCENE_UNITS;
       const config = planetConfigs[name];
 
-      const geometry = new THREE.SphereGeometry(radius, 32, 32);
+      const geometry = new THREE.SphereGeometry(radius, 64, 64); // Increased segments for smoother spheres
       let material;
 
       if (name === 'Earth') {
         const textureLoader = new THREE.TextureLoader();
-        const earthDiffuseTexture = textureLoader.load('/assets/textures/earth_diffuse.jpg');
-        const earthPlantsTexture = textureLoader.load('/assets/textures/earth_plants.jpg');
-        material = new THREE.MeshStandardMaterial({ map: earthDiffuseTexture });
-        // To blend textures for plant surfaces, you would typically use a custom shader.
-        // For now, we'll use the diffuse texture as the base and add a simple overlay for plants.
-        // A more advanced implementation would involve a custom shader that blends based on a mask or height map.
-        const earthMaterialWithPlants = new THREE.MeshStandardMaterial({
-          map: earthDiffuseTexture,
+        const earthDiffuseTexture = textureLoader.load(config.texture);
+        const earthPlantsTexture = textureLoader.load(config.plantsTexture);
+        
+        // Create a custom shader material for blending textures
+        const earthShaderMaterial = new THREE.ShaderMaterial({
+          uniforms: {
+            diffuseTexture: { value: earthDiffuseTexture },
+            plantsTexture: { value: earthPlantsTexture }
+          },
+          vertexShader: `
+            varying vec2 vUv;
+            void main() {
+              vUv = uv;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `,
+          fragmentShader: `
+            uniform sampler2D diffuseTexture;
+            uniform sampler2D plantsTexture;
+            varying vec2 vUv;
+            void main() {
+              vec4 diffuseColor = texture2D(diffuseTexture, vUv);
+              vec4 plantsColor = texture2D(plantsTexture, vUv);
+              // Simple blending: adjust the mix factor as needed
+              gl_FragColor = mix(diffuseColor, plantsColor, 0.5); 
+            }
+          `
+        });
+        material = earthShaderMaterial;
+      } else if (config.texture) {
+        const textureLoader = new THREE.TextureLoader();
+        const planetTexture = textureLoader.load(config.texture);
+        material = new THREE.MeshStandardMaterial({ 
+          map: planetTexture,
           metalness: 0.1,
           roughness: 0.7
         });
-        // Simple overlay for plants (this is a basic approach, a shader would be better)
-        const plantOverlayMaterial = new THREE.MeshStandardMaterial({
-          map: earthPlantsTexture,
-          transparent: true,
-          opacity: 0.5, // Adjust opacity as needed
-          metalness: 0.1,
-          roughness: 0.7
-        });
-        material = [earthMaterialWithPlants, plantOverlayMaterial]; // Use an array of materials for multi-material mesh
       } else {
         material = new THREE.MeshStandardMaterial({ 
           color: config.color,
@@ -175,7 +196,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
 
       // Add Saturn's rings with realistic appearance
       if (name === 'Saturn') {
-        const ringGeometry = new THREE.RingGeometry(radius * 1.2, radius * 2.2, 32);
+        const ringGeometry = new THREE.RingGeometry(radius * 1.2, radius * 2.2, 64); // Increased segments for smoother rings
         const ringMaterial = new THREE.MeshStandardMaterial({ 
           color: 0xc0c0c0, 
           side: THREE.DoubleSide,
@@ -370,7 +391,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
           distance: moonData.distance,
           angle: (index * Math.PI) / 2,
           speed: moonData.speed,
-          name: moonData.name
+          name: 'Io'
         });
       });
     }
@@ -395,7 +416,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
           distance: moonData.distance,
           angle: index * Math.PI,
           speed: moonData.speed,
-          name: moonData.name
+          name: 'Titan'
         });
       });
     }
@@ -420,7 +441,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
           distance: moonData.distance,
           angle: index * Math.PI,
           speed: moonData.speed,
-          name: 'Moon'
+          name: 'Miranda'
         });
       });
     }
@@ -448,9 +469,9 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
-    focusOnPlanet: (planetName) => {
+    focusOnPlanet: (planetName, viewType = 'orbit') => {
       if (window.focusOnPlanet) {
-        window.focusOnPlanet(planetName);
+        window.focusOnPlanet(planetName, viewType);
       }
     }
   }));
