@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } => {
+import { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+
+const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange }) => {
   const controlsRef = useRef({
     isMouseDown: false,
     mouseX: 0,

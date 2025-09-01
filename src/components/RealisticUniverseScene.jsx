@@ -87,22 +87,24 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
     mountRef.current.appendChild(renderer.domElement);
 
     // Realistic lighting
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.3); // Slightly brighter ambient light
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.8); // Increased ambient light
     scene.add(ambientLight);
 
-    const sunLight = new THREE.PointLight(0xfff8dc, 5, 0); // Brighter sun light
+    const sunLight = new THREE.PointLight(0xffffff, 10, 0); // Brighter sun light, white color
     sunLight.position.set(0, 0, 0);
     sunLight.castShadow = true; // Sun casts shadows
-    sunLight.shadow.mapSize.width = 1024; // Increased shadow map resolution
-    sunLight.shadow.mapSize.height = 1024;
+    sunLight.shadow.mapSize.width = 2048; // Increased shadow map resolution
+    sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 500;
+    sunLight.shadow.camera.far = 1000;
     scene.add(sunLight);
 
     // Create realistic Sun
     const sunGeometry = new THREE.SphereGeometry(8, 64, 64);
     const sunMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0xfff8dc
+      color: 0xffaa00, // Orange-yellow color for the Sun
+      emissive: 0xffaa00, // Make it emit light
+      emissiveIntensity: 1.5 // Adjust intensity as needed
     });
     const sun = new THREE.Mesh(sunGeometry, sunMaterial);
     scene.add(sun);
@@ -226,9 +228,10 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       canvas.width = 256;
       canvas.height = 64;
       // No fillStyle for background, so it's transparent
-      context.fillStyle = 'white';
+      // context.fillStyle = 'white'; // Removed to make background transparent
       context.font = 'bold 24px Arial';
       context.textAlign = 'center';
+      context.fillStyle = 'white'; // Set fillStyle for text color
       context.fillText(name, 128, 32);
 
       const texture = new THREE.CanvasTexture(canvas);
