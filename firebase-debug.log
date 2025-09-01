@@ -1,0 +1,55 @@
+[debug] [2025-09-01T00:54:40.306Z] ----------------------------------------------------------------------
+[debug] [2025-09-01T00:54:40.308Z] Command:       /home/ubuntu/.nvm/versions/node/v22.13.0/bin/node /home/ubuntu/.nvm/versions/node/v22.13.0/bin/firebase init hosting --project funniverse-598af --token 4/0AVMBsJifg-PI_KU33ULzgquFoZ9UTIP72U4TjHSqalrzEsl-52gvromp8TLwmhlqghzh1w
+[debug] [2025-09-01T00:54:40.309Z] CLI Version:   14.15.1
+[debug] [2025-09-01T00:54:40.309Z] Platform:      linux
+[debug] [2025-09-01T00:54:40.309Z] Node Version:  v22.13.0
+[debug] [2025-09-01T00:54:40.309Z] Time:          Sun Aug 31 2025 20:54:40 GMT-0400 (Eastern Daylight Time)
+[debug] [2025-09-01T00:54:40.309Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-09-01T00:54:40.314Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-09-01T00:54:40.314Z] > authorizing via --token option
+[warn] ⚠  Authenticating with `--token` is deprecated and will be removed in a future major version of `firebase-tools`. Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started 
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /home/ubuntu/funniverse
+
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] but for now we'll just set up a default project.
+[info] 
+[debug] [2025-09-01T00:54:40.317Z] Using project from CLI flag: funniverse-598af
+[debug] [2025-09-01T00:54:40.318Z] No OAuth tokens found
+[debug] [2025-09-01T00:54:40.318Z] No OAuth tokens found
+[debug] [2025-09-01T00:54:40.319Z] > refreshing access token with scopes: []
+[debug] [2025-09-01T00:54:40.321Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-09-01T00:54:40.321Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-09-01T00:54:40.409Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 400
+[debug] [2025-09-01T00:54:40.410Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-09-01T00:54:40.410Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/funniverse-598af [none]
+[debug] [2025-09-01T00:54:40.533Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/funniverse-598af 401
+[debug] [2025-09-01T00:54:40.533Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/funniverse-598af {"error":{"code":401,"message":"Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.","status":"UNAUTHENTICATED"}}
+[debug] [2025-09-01T00:54:40.533Z] Got a 401 Unauthenticated error for a call that required authentication. Refreshing tokens.
+[debug] [2025-09-01T00:54:40.533Z] No OAuth tokens found
+[debug] [2025-09-01T00:54:40.533Z] No OAuth tokens found
+[debug] [2025-09-01T00:54:40.533Z] > refreshing access token with scopes: []
+[debug] [2025-09-01T00:54:40.534Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-09-01T00:54:40.534Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-09-01T00:54:40.560Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 400
+[debug] [2025-09-01T00:54:40.560Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-09-01T00:54:40.561Z] Request to https://firebase.googleapis.com/v1beta1/projects/funniverse-598af had HTTP Error: 401, Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.
+[debug] [2025-09-01T00:54:40.584Z] FirebaseError: Request to https://firebase.googleapis.com/v1beta1/projects/funniverse-598af had HTTP Error: 401, Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.
+    at responseToError (/home/ubuntu/.nvm/versions/node/v22.13.0/lib/node_modules/firebase-tools/lib/responseToError.js:52:12)
+    at RetryOperation._fn (/home/ubuntu/.nvm/versions/node/v22.13.0/lib/node_modules/firebase-tools/lib/apiv2.js:312:77)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[error] 
+[error] Error: Failed to get Firebase project funniverse-598af. Please make sure the project exists and your account has permission to access it.

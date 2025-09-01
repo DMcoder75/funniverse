@@ -80,18 +80,19 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       failIfMajorPerformanceCaveat: false
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = false;
+    renderer.shadowMap.enabled = true; // Enable shadows for more realism
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     rendererRef.current = renderer;
     mountRef.current.appendChild(renderer.domElement);
 
     // Realistic lighting
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.1);
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.2); // Slightly brighter ambient light
     scene.add(ambientLight);
 
     const sunLight = new THREE.PointLight(0xfff8dc, 3, 0);
     sunLight.position.set(0, 0, 0);
+    sunLight.castShadow = true; // Sun casts shadows
     scene.add(sunLight);
 
     // Create realistic Sun
@@ -140,36 +141,52 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
         const textureLoader = new THREE.TextureLoader();
         const earthDiffuseTexture = textureLoader.load('/assets/textures/earth_diffuse.jpg');
         const earthPlantsTexture = textureLoader.load('/assets/textures/earth_plants.jpg');
-        material = new THREE.MeshLambertMaterial({ map: earthDiffuseTexture });
-        // You might want to blend these textures or use a shader for more advanced effects
-        // For now, we'll just use the diffuse texture.
-      } else {
-        material = new THREE.MeshLambertMaterial({ 
-          color: config.color
+        material = new THREE.MeshStandardMaterial({ map: earthDiffuseTexture });
+        // To blend textures for plant surfaces, you would typically use a custom shader.
+        // For now, we'll use the diffuse texture as the base and add a simple overlay for plants.
+        // A more advanced implementation would involve a custom shader that blends based on a mask or height map.
+        const earthMaterialWithPlants = new THREE.MeshStandardMaterial({
+          map: earthDiffuseTexture,
+          metalness: 0.1,
+          roughness: 0.7
         });
-      }
-
-      // Special handling for specific planets
-      if (name === 'Jupiter') {
-        // Add subtle banding effect
-        material.color.setHex(0xd2b48c);
+        // Simple overlay for plants (this is a basic approach, a shader would be better)
+        const plantOverlayMaterial = new THREE.MeshStandardMaterial({
+          map: earthPlantsTexture,
+          transparent: true,
+          opacity: 0.5, // Adjust opacity as needed
+          metalness: 0.1,
+          roughness: 0.7
+        });
+        material = [earthMaterialWithPlants, plantOverlayMaterial]; // Use an array of materials for multi-material mesh
+      } else {
+        material = new THREE.MeshStandardMaterial({ 
+          color: config.color,
+          metalness: 0.1,
+          roughness: 0.7
+        });
       }
 
       const planet = new THREE.Mesh(geometry, material);
       planet.position.x = distance;
+      planet.castShadow = true;
+      planet.receiveShadow = true;
       scene.add(planet);
 
       // Add Saturn's rings with realistic appearance
       if (name === 'Saturn') {
         const ringGeometry = new THREE.RingGeometry(radius * 1.2, radius * 2.2, 32);
-        const ringMaterial = new THREE.MeshLambertMaterial({ 
+        const ringMaterial = new THREE.MeshStandardMaterial({ 
           color: 0xc0c0c0, 
           side: THREE.DoubleSide,
           transparent: true,
-          opacity: 0.6
+          opacity: 0.6,
+          metalness: 0.1,
+          roughness: 0.8
         });
         const rings = new THREE.Mesh(ringGeometry, ringMaterial);
         rings.rotation.x = Math.PI / 2;
+        rings.receiveShadow = true;
         planet.add(rings);
       }
 
@@ -276,8 +293,10 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       const moonRadius = 0.15;
       const moonDistance = 3;
       const moonGeometry = new THREE.SphereGeometry(moonRadius, 32, 32);
-      const moonMaterial = new THREE.MeshLambertMaterial({ color: 0xc0c0c0 });
+      const moonMaterial = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, roughness: 0.8 });
       const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+      moon.receiveShadow = true;
+      moon.castShadow = true;
       scene.add(moon);
 
       planets.Earth.moons.push({
@@ -295,16 +314,20 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       const phobosRadius = 0.05;
       const phobosDistance = 1.5;
       const phobosGeometry = new THREE.SphereGeometry(phobosRadius, 16, 16);
-      const phobosMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+      const phobosMaterial = new THREE.MeshStandardMaterial({ color: 0x696969, roughness: 0.9 });
       const phobos = new THREE.Mesh(phobosGeometry, phobosMaterial);
+      phobos.receiveShadow = true;
+      phobos.castShadow = true;
       scene.add(phobos);
 
       // Deimos
       const deimosRadius = 0.03;
       const deimosDistance = 2.2;
       const deimosGeometry = new THREE.SphereGeometry(deimosRadius, 16, 16);
-      const deimosMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+      const deimosMaterial = new THREE.MeshStandardMaterial({ color: 0x696969, roughness: 0.9 });
       const deimos = new THREE.Mesh(deimosGeometry, deimosMaterial);
+      deimos.receiveShadow = true;
+      deimos.castShadow = true;
       scene.add(deimos);
 
       planets.Mars.moons.push(
@@ -336,8 +359,10 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
 
       jupiterMoons.forEach((moonData, index) => {
         const moonGeometry = new THREE.SphereGeometry(moonData.radius, 24, 24);
-        const moonMaterial = new THREE.MeshLambertMaterial({ color: moonData.color });
+        const moonMaterial = new THREE.MeshStandardMaterial({ color: moonData.color, roughness: 0.8 });
         const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+        moon.receiveShadow = true;
+        moon.castShadow = true;
         scene.add(moon);
 
         planets.Jupiter.moons.push({
@@ -359,8 +384,10 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
 
       saturnMoons.forEach((moonData, index) => {
         const moonGeometry = new THREE.SphereGeometry(moonData.radius, 24, 24);
-        const moonMaterial = new THREE.MeshLambertMaterial({ color: moonData.color });
+        const moonMaterial = new THREE.MeshStandardMaterial({ color: moonData.color, roughness: 0.8 });
         const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+        moon.receiveShadow = true;
+        moon.castShadow = true;
         scene.add(moon);
 
         planets.Saturn.moons.push({
@@ -382,8 +409,10 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
 
       uranusMoons.forEach((moonData, index) => {
         const moonGeometry = new THREE.SphereGeometry(moonData.radius, 20, 20);
-        const moonMaterial = new THREE.MeshLambertMaterial({ color: moonData.color });
+        const moonMaterial = new THREE.MeshStandardMaterial({ color: moonData.color, roughness: 0.8 });
         const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+        moon.receiveShadow = true;
+        moon.castShadow = true;
         scene.add(moon);
 
         planets.Uranus.moons.push({
@@ -401,8 +430,10 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       const tritonRadius = 0.11;
       const tritonDistance = 5;
       const tritonGeometry = new THREE.SphereGeometry(tritonRadius, 24, 24);
-      const tritonMaterial = new THREE.MeshLambertMaterial({ color: 0xffe4e1 });
+      const tritonMaterial = new THREE.MeshStandardMaterial({ color: 0xffe4e1, roughness: 0.8 });
       const triton = new THREE.Mesh(tritonGeometry, tritonMaterial);
+      triton.receiveShadow = true;
+      triton.castShadow = true;
       scene.add(triton);
 
       planets.Neptune.moons.push({
@@ -437,6 +468,5 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
 });
 
 export default RealisticUniverseScene;
-
 
 

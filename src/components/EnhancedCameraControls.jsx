@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange }) => {
@@ -13,6 +13,8 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
     focusTarget: null,
     isAnimating: false
   });
+
+  const [isSurfaceView, setSurfaceView] = useState(false);
 
   useEffect(() => {
     if (!camera || !renderer) return;
@@ -67,7 +69,7 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
       if (controls.focusTarget) {
         const targetData = planets[controls.focusTarget];
         if (targetData) {
-          minDistance = targetData.radius * 2.5; // Get close but not inside
+          minDistance = isSurfaceView ? 0.1 : targetData.radius * 2.5; // Closer zoom for surface view
           maxDistance = targetData.radius * 50;
         }
       }
@@ -80,13 +82,21 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
         const target = planets[controls.focusTarget].mesh;
         const targetPos = target.position.clone();
         
-        // Position camera relative to the focused planet
-        const x = targetPos.x + controls.distance * Math.cos(controls.targetY) * Math.cos(controls.targetX);
-        const y = targetPos.y + controls.distance * Math.sin(controls.targetY);
-        const z = targetPos.z + controls.distance * Math.cos(controls.targetY) * Math.sin(controls.targetX);
-        
-        camera.position.set(x, y, z);
-        camera.lookAt(targetPos);
+        if (isSurfaceView) {
+          // Surface view: Position camera on the surface
+          const surfacePosition = targetPos.clone().add(new THREE.Vector3(0, planets[controls.focusTarget].radius + 1, 0));
+          camera.position.copy(surfacePosition);
+          const lookAtTarget = targetPos.clone().add(new THREE.Vector3(1, planets[controls.focusTarget].radius + 1, 0));
+          camera.lookAt(lookAtTarget);
+        } else {
+          // Orbit view
+          const x = targetPos.x + controls.distance * Math.cos(controls.targetY) * Math.cos(controls.targetX);
+          const y = targetPos.y + controls.distance * Math.sin(controls.targetY);
+          const z = targetPos.z + controls.distance * Math.cos(controls.targetY) * Math.sin(controls.targetX);
+          
+          camera.position.set(x, y, z);
+          camera.lookAt(targetPos);
+        }
       } else {
         // Default solar system view
         const x = controls.distance * Math.cos(controls.targetY) * Math.cos(controls.targetX);
@@ -124,13 +134,14 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('wheel', onWheel);
     };
-  }, [camera, renderer, planets]);
+  }, [camera, renderer, planets, isSurfaceView]);
 
   // Expose focus method
   useEffect(() => {
     if (camera && renderer) {
-      window.focusOnPlanet = (planetName) => {
+      window.focusOnPlanet = (planetName, viewType = 'orbit') => {
         const controls = controlsRef.current;
+        setSurfaceView(viewType === 'surface');
         
         if (planetName === 'Sun' || planetName === 'Solar System') {
           // Focus on solar system center
@@ -169,7 +180,7 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
           // Focus on specific planet
           controls.focusTarget = planetName;
           const targetData = planets[planetName];
-          controls.targetDistance = targetData.radius * 5; // Start at a good viewing distance
+          controls.targetDistance = targetData.radius * (viewType === 'surface' ? 1.5 : 5);
           controls.isAnimating = true;
           
           // Smooth transition to planet
@@ -210,4 +221,5 @@ const EnhancedCameraControls = ({ camera, renderer, planets, onLocationChange })
 };
 
 export default EnhancedCameraControls;
+
 
