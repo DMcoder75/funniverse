@@ -83,10 +83,8 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
               camera.position.copy(cameraTargetPosition);
               camera.lookAt(lookAtTarget);
               
-              // Clear focus mode after animation
-              setTimeout(() => {
-                camera.userData.focusMode = false;
-              }, 500);
+              // Clear focus mode immediately after animation completes
+              camera.userData.focusMode = false;
             }
           };
           
@@ -366,6 +364,10 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
       if (!isMouseDown) return;
       event.preventDefault();
       
+      // Don't allow mouse movement during camera focus animation
+      const camera = cameraRef.current;
+      if (camera && camera.userData.focusMode) return;
+      
       const deltaX = event.clientX - mouseX;
       const deltaY = event.clientY - mouseY;
       
@@ -466,6 +468,10 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
       if (!isMouseDown || event.touches.length !== 1) return;
       event.preventDefault();
       
+      // Don't allow touch movement during camera focus animation
+      const camera = cameraRef.current;
+      if (camera && camera.userData.focusMode) return;
+      
       const deltaX = event.touches[0].clientX - mouseX;
       const deltaY = event.touches[0].clientY - mouseY;
       
@@ -552,71 +558,7 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
     animate();
 
     // Focus on planet function
-    const focusOnPlanet = (planetName) => {
-      console.log('focusOnPlanet called with:', planetName);
-      console.log('Available planets:', Object.keys(planetsRef.current));
-      
-      const planetInfo = planetsRef.current[planetName];
-      if (planetInfo && planetInfo.mesh) {
-        console.log('Planet found:', planetName, 'angle:', planetInfo.angle, 'distance:', planetInfo.distance);
-        
-        const planet = planetInfo.mesh;
-        const distance = planetName === 'Sun' ? 50 : 20;
-        
-        // Update the current location immediately
-        if (onLocationChange) {
-          onLocationChange(planetName);
-        }
-        
-        // Calculate target camera position using the planet's current orbital angle
-        const planetPosition = planet.position.clone();
-        const targetCameraDistance = distance;
-        
-        // Use the planet's orbital angle for proper targeting
-        const targetTheta = planetName === 'Sun' ? 0 : planetInfo.angle;
-        const targetPhi = 0; // Keep at equator level
-        
-        console.log('Target theta:', targetTheta, 'Target phi:', targetPhi, 'Distance:', targetCameraDistance);
-        
-        // Animate to target position
-        const startTargetX = targetX;
-        const startTargetY = targetY;
-        const startCameraDistance = cameraDistance;
-        const startTime = Date.now();
-        const duration = 2000; // 2 seconds
-        
-        const animateCamera = () => {
-          const elapsed = Date.now() - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          
-          // Smooth easing function
-          const easeProgress = 1 - Math.pow(1 - progress, 3);
-          
-          // Interpolate rotation and distance
-          targetX = startTargetX + (targetTheta - startTargetX) * easeProgress;
-          targetY = startTargetY + (targetPhi - startTargetY) * easeProgress;
-          cameraDistance = startCameraDistance + (targetCameraDistance - startCameraDistance) * easeProgress;
-          
-          if (progress < 1) {
-            requestAnimationFrame(animateCamera);
-          }
-        };
-        
-        animateCamera();
-      } else {
-        console.log('Planet not found:', planetName);
-      }
-    };
-
-    // Make focusOnPlanet available to the imperative handle
-    window.focusOnPlanetRef = focusOnPlanet;
-
-    // Add event listener for custom focusOnPlanet event as fallback
-    const handleFocusOnPlanetEvent = (event) => {
-      const { planetName } = event.detail;
-      focusOnPlanet(planetName);
-    };
-    window.addEventListener('focusOnPlanet', handleFocusOnPlanetEvent);
+    // Note: focusOnPlanet is now handled via useImperativeHandle above
 
     // Handle window resize
     const handleResize = () => {
@@ -630,7 +572,6 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('focusOnPlanet', handleFocusOnPlanetEvent);
       renderer.domElement.removeEventListener('mousedown', handleMouseDown);
       renderer.domElement.removeEventListener('mousemove', handleMouseMove);
       renderer.domElement.removeEventListener('mouseup', handleMouseUp);
@@ -638,11 +579,6 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
       renderer.domElement.removeEventListener('touchstart', handleTouchStart);
       renderer.domElement.removeEventListener('touchmove', handleTouchMove);
       renderer.domElement.removeEventListener('touchend', handleTouchEnd);
-      
-      // Clean up window reference
-      if (typeof window !== 'undefined') {
-        delete window.focusOnPlanetRef;
-      }
       
       if (animationIdRef.current) {
         cancelAnimationFrame(animationIdRef.current);
