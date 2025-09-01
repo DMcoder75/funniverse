@@ -503,11 +503,14 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
     const animate = () => {
       animationIdRef.current = requestAnimationFrame(animate);
 
-      // Update camera rotation based on mouse/touch input
-      camera.position.x = Math.cos(targetX) * Math.cos(targetY) * cameraDistance;
-      camera.position.y = Math.sin(targetY) * cameraDistance;
-      camera.position.z = Math.sin(targetX) * Math.cos(targetY) * cameraDistance;
-      camera.lookAt(0, 0, 0);
+      // Only update camera rotation if not in focus mode
+      if (!camera.userData.focusMode) {
+        // Update camera rotation based on mouse/touch input
+        camera.position.x = Math.cos(targetX) * Math.cos(targetY) * cameraDistance;
+        camera.position.y = Math.sin(targetY) * cameraDistance;
+        camera.position.z = Math.sin(targetX) * Math.cos(targetY) * cameraDistance;
+        camera.lookAt(0, 0, 0);
+      }
 
       // Animate stars for dynamic background
       starsRef.rotation.x += 0.0001;
