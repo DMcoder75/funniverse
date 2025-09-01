@@ -117,7 +117,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
     const planetConfigs = {
       Mercury: { color: 0x8c7853, emissive: 0x000000 },
       Venus: { color: 0xffc649, emissive: 0x332200 },
-      Earth: { color: 0x6b93d6, emissive: 0x001122 },
+      Earth: { color: 0x0077be, emissive: 0x001122 }, // More vibrant blue
       Mars: { color: 0xcd5c5c, emissive: 0x220000 },
       Jupiter: { color: 0xd2b48c, emissive: 0x221100 },
       Saturn: { color: 0xfad5a5, emissive: 0x221100 },
@@ -134,15 +134,22 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       const config = planetConfigs[name];
 
       const geometry = new THREE.SphereGeometry(radius, 32, 32);
-      const material = new THREE.MeshLambertMaterial({ 
-        color: config.color
-      });
+      let material;
 
-      // Special handling for specific planets
       if (name === 'Earth') {
-        material.color.setHex(0x4169e1); // More realistic Earth blue
+        const textureLoader = new THREE.TextureLoader();
+        const earthDiffuseTexture = textureLoader.load('/assets/textures/earth_diffuse.jpg');
+        const earthPlantsTexture = textureLoader.load('/assets/textures/earth_plants.jpg');
+        material = new THREE.MeshLambertMaterial({ map: earthDiffuseTexture });
+        // You might want to blend these textures or use a shader for more advanced effects
+        // For now, we'll just use the diffuse texture.
+      } else {
+        material = new THREE.MeshLambertMaterial({ 
+          color: config.color
+        });
       }
 
+      // Special handling for specific planets
       if (name === 'Jupiter') {
         // Add subtle banding effect
         material.color.setHex(0xd2b48c);
@@ -180,13 +187,14 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
       const context = canvas.getContext('2d');
       canvas.width = 256;
       canvas.height = 64;
+      // No fillStyle for background, so it's transparent
       context.fillStyle = 'white';
       context.font = 'bold 24px Arial';
       context.textAlign = 'center';
       context.fillText(name, 128, 32);
 
       const texture = new THREE.CanvasTexture(canvas);
-      const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+      const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true }); // Add transparent: true
       const sprite = new THREE.Sprite(spriteMaterial);
       sprite.position.copy(planet.position);
       sprite.position.y += radius * 3;
@@ -383,7 +391,7 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
           distance: moonData.distance,
           angle: index * Math.PI,
           speed: moonData.speed,
-          name: moonData.name
+          name: 'Moon'
         });
       });
     }
@@ -429,4 +437,6 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
 });
 
 export default RealisticUniverseScene;
+
+
 
