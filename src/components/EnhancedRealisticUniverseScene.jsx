@@ -97,7 +97,7 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
     const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.PointLight(0xffffff, 2, 1000);
+    const sunLight = new THREE.PointLight(0xffffff, 3, 1000);
     sunLight.position.set(0, 0, 0);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
@@ -129,47 +129,55 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
     const AU_TO_SCENE_UNITS = 50;
     const RADIUS_SCALE = 0.5;
 
-    // Enhanced planet configurations with realistic textures
+    // Enhanced planet configurations with brighter, more solid appearance
     const planetConfigs = {
       Mercury: { 
-        color: 0x8c7853, 
+        color: 0xccaa88, 
         texture: '/assets/textures/mercury_texture.jpg',
-        emissive: 0x000000 
+        emissive: 0x332211,
+        emissiveIntensity: 0.3
       },
       Venus: { 
-        color: 0xffc649, 
+        color: 0xffdd77, 
         texture: '/assets/textures/venus_texture.png',
-        emissive: 0x332200 
+        emissive: 0x554422,
+        emissiveIntensity: 0.4
       },
       Earth: { 
-        color: 0x0077be, 
+        color: 0x2299ff, 
         texture: '/assets/textures/earth_texture.jpg',
-        emissive: 0x001122 
+        emissive: 0x003366,
+        emissiveIntensity: 0.3
       },
       Mars: { 
-        color: 0xcd5c5c, 
+        color: 0xff7777, 
         texture: '/assets/textures/mars_texture.jpg',
-        emissive: 0x220000 
+        emissive: 0x441111,
+        emissiveIntensity: 0.3
       },
       Jupiter: { 
-        color: 0xd2b48c, 
+        color: 0xffcc99, 
         texture: '/assets/textures/jupiter_texture.jpg',
-        emissive: 0x221100 
+        emissive: 0x443322,
+        emissiveIntensity: 0.4
       },
       Saturn: { 
-        color: 0xfad5a5, 
+        color: 0xffddaa, 
         texture: '/assets/textures/saturn_texture.jpg',
-        emissive: 0x221100 
+        emissive: 0x443322,
+        emissiveIntensity: 0.4
       },
       Uranus: { 
-        color: 0x4fd0e7, 
+        color: 0x77ddff, 
         texture: '/assets/textures/uranus_texture.png',
-        emissive: 0x001122 
+        emissive: 0x224455,
+        emissiveIntensity: 0.3
       },
       Neptune: { 
-        color: 0x4b70dd, 
+        color: 0x6688ff, 
         texture: '/assets/textures/neptune_texture.jpg',
-        emissive: 0x000022 
+        emissive: 0x112244,
+        emissiveIntensity: 0.3
       }
     };
 
@@ -184,15 +192,17 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
       const geometry = new THREE.SphereGeometry(radius, 64, 64);
       let material;
 
-      // Load realistic texture for each planet
+      // Load realistic texture for each planet with enhanced brightness
       const planetTexture = textureLoader.load(config.texture);
-      material = new THREE.MeshLambertMaterial({ 
+      material = new THREE.MeshPhongMaterial({ 
         map: planetTexture,
         color: config.color,
         emissive: config.emissive,
-        emissiveIntensity: 0.8,
+        emissiveIntensity: config.emissiveIntensity * 1.5, // Increased for brighter appearance
+        shininess: 60, // Increased for more solid appearance
         transparent: false,
-        opacity: 1.0
+        opacity: 1.0,
+        side: THREE.FrontSide
       });
 
       const planet = new THREE.Mesh(geometry, material);
@@ -201,15 +211,17 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
       planet.receiveShadow = true;
       scene.add(planet);
 
-      // Add Saturn's rings with enhanced realism
+      // Add Saturn's rings with enhanced brightness and visibility
       if (name === 'Saturn') {
         const ringGeometry = new THREE.RingGeometry(radius * 1.2, radius * 2.2, 64);
-        const ringMaterial = new THREE.MeshLambertMaterial({ 
-          color: 0xc0c0c0, 
+        const ringMaterial = new THREE.MeshPhongMaterial({ 
+          color: 0xffffff, 
           side: THREE.DoubleSide,
           transparent: true,
-          opacity: 0.7,
-          alphaTest: 0.1
+          opacity: 0.9,
+          emissive: 0x444444,
+          emissiveIntensity: 0.2,
+          shininess: 50
         });
         const rings = new THREE.Mesh(ringGeometry, ringMaterial);
         rings.rotation.x = Math.PI / 2;
@@ -349,8 +361,33 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
 
     const handleWheel = (event) => {
       event.preventDefault();
+      const oldDistance = cameraDistance;
       cameraDistance += event.deltaY * 0.1;
       cameraDistance = Math.max(20, Math.min(800, cameraDistance));
+      
+      // Check if we're zooming into a planet for automatic surface view
+      if (event.deltaY < 0 && cameraDistance < 30) { // Zooming in very close
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2(0, 0); // Center of screen
+        raycaster.setFromCamera(mouse, camera);
+        
+        const planetMeshes = Object.values(planetsRef.current).map(p => p.mesh).filter(Boolean);
+        const intersects = raycaster.intersectObjects(planetMeshes);
+        
+        if (intersects.length > 0) {
+          const closestObject = intersects[0].object;
+          // Find which planet is closest to center
+          for (const [name, planetInfo] of Object.entries(planetsRef.current)) {
+            if (planetInfo.mesh === closestObject && name !== 'Sun') {
+              // Trigger surface view
+              if (window.triggerSurfaceView) {
+                window.triggerSurfaceView(name);
+              }
+              break;
+            }
+          }
+        }
+      }
     };
 
     // Touch controls for mobile

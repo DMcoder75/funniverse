@@ -113,16 +113,16 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
     const AU_TO_SCENE_UNITS = 50;
     const RADIUS_SCALE = 0.5;
 
-    // Realistic planet colors and materials
+    // Enhanced bright planet colors for better visibility
     const planetConfigs = {
-      Mercury: { color: 0x8c7853, emissive: 0x000000 },
-      Venus: { color: 0xffc649, emissive: 0x332200 },
-      Earth: { color: 0x0077be, emissive: 0x001122 }, // More vibrant blue
-      Mars: { color: 0xcd5c5c, emissive: 0x220000 },
-      Jupiter: { color: 0xd2b48c, emissive: 0x221100 },
-      Saturn: { color: 0xfad5a5, emissive: 0x221100 },
-      Uranus: { color: 0x4fd0e7, emissive: 0x001122 },
-      Neptune: { color: 0x4b70dd, emissive: 0x000022 }
+      Mercury: { color: 0xb8a082, emissive: 0x2a1f15 },
+      Venus: { color: 0xffdd44, emissive: 0x554400 },
+      Earth: { color: 0x1199ff, emissive: 0x003366 }, // Bright vibrant blue
+      Mars: { color: 0xff6b47, emissive: 0x441100 },
+      Jupiter: { color: 0xffcc66, emissive: 0x553300 },
+      Saturn: { color: 0xffeaa7, emissive: 0x554422 },
+      Uranus: { color: 0x74d0f1, emissive: 0x003344 },
+      Neptune: { color: 0x5588ff, emissive: 0x001144 }
     };
 
     // Create all planets with realistic appearance
@@ -149,24 +149,25 @@ const RealisticUniverseScene = forwardRef(({ onLocationChange }, ref) => {
         });
       }
 
-      // Special handling for specific planets
+      // Special handling for specific planets with enhanced brightness
       if (name === 'Jupiter') {
-        // Add subtle banding effect
-        material.color.setHex(0xd2b48c);
+        // Add bright banding effect
+        material.color.setHex(0xffcc66);
+        material.emissive.setHex(0x553300);
       }
 
       const planet = new THREE.Mesh(geometry, material);
       planet.position.x = distance;
       scene.add(planet);
 
-      // Add Saturn's rings with realistic appearance
+      // Add Saturn's rings with enhanced bright appearance
       if (name === 'Saturn') {
         const ringGeometry = new THREE.RingGeometry(radius * 1.2, radius * 2.2, 32);
         const ringMaterial = new THREE.MeshLambertMaterial({ 
-          color: 0xc0c0c0, 
+          color: 0xf0f0f0, 
           side: THREE.DoubleSide,
           transparent: true,
-          opacity: 0.6
+          opacity: 0.8
         });
         const rings = new THREE.Mesh(ringGeometry, ringMaterial);
         rings.rotation.x = Math.PI / 2;
