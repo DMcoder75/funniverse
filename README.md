@@ -2,7 +2,7 @@
 
 An immersive 3D universe simulation built with React and Three.js, featuring realistic planetary orbits, interactive navigation, and multiple viewing modes.
 
-## Features
+## 🌟 Features
 
 - **Interactive 3D Solar System**: Explore planets with realistic orbital mechanics
 - **Planet Navigation**: Click on navigation buttons to smoothly travel to different planets
@@ -13,7 +13,26 @@ An immersive 3D universe simulation built with React and Three.js, featuring rea
 - **Responsive Controls**: Mouse/touch controls for camera rotation and zoom
 - **Real-time Animation**: Planets orbit the sun with realistic speeds based on Kepler's laws
 
-## Recent Fixes (Branch 16)
+## 🚀 Live Demo
+
+**🌐 [View Live Demo](https://funniverse-598af.web.app)**
+
+## 🐛 Latest Fixes (Branch 17)
+
+### Planet Navigation Bug Fixed:
+- ✅ **Fixed incorrect planet targeting**: Neptune button now correctly navigates to Neptune (was showing Jupiter)
+- ✅ **Fixed Jupiter navigation**: Jupiter button now shows correct planet view
+- ✅ **Enhanced position accuracy**: Camera now uses real-time mesh positions instead of stored angles
+- ✅ **Improved debugging**: Added comprehensive logging for planet positions and camera calculations
+- ✅ **All planets verified**: Sun, Moon, and all planets now navigate correctly
+
+### Technical Implementation:
+- Modified `focusOnPlanet` method in `EnhancedRealisticUniverseScene.jsx`
+- Uses actual mesh positions (`planetInfo.mesh.position`) for camera calculations
+- Calculates camera angles based on real-time 3D coordinates
+- Ensures accurate navigation regardless of orbital animations
+
+## Previous Fixes (Branch 16)
 
 ### Camera Navigation Issues Resolved:
 - ✅ **Fixed planet navigation**: Camera now properly moves to planets when clicking navigation buttons

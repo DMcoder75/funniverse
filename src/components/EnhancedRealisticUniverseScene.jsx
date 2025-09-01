@@ -18,10 +18,13 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
   useImperativeHandle(ref, () => ({
     focusOnPlanet: (planetName) => {
       console.log('focusOnPlanet called for:', planetName);
+      console.log('Available planets:', Object.keys(planetsRef.current));
       
       const planetInfo = planetsRef.current[planetName];
       if (planetInfo && planetInfo.mesh) {
         console.log('Planet found:', planetName);
+        console.log('Planet mesh position:', planetInfo.mesh.position);
+        console.log('Planet data:', planetInfo.data);
         
         // Update location immediately
         if (onLocationChange) {
@@ -41,21 +44,29 @@ const EnhancedRealisticUniverseScene = forwardRef(({ onLocationChange }, ref) =>
           targetPhi = 0.3;
           targetDistance = 120;
         } else {
-          // For planets, calculate position based on their orbital location
-          const distance = planetInfo.distance || 100;
-          const angle = planetInfo.angle || 0;
+          // Use the actual mesh position to calculate camera angles
+          // This ensures we focus on where the planet actually is, not where we think it should be
+          const actualX = planetPosition.x;
+          const actualZ = planetPosition.z;
+          const actualDistance = Math.sqrt(actualX * actualX + actualZ * actualZ);
           
-          console.log('Planet data:', {
+          // Calculate the angle based on actual position
+          const actualAngle = Math.atan2(actualZ, actualX);
+          
+          console.log('Planet actual position data:', {
             name: planetName,
-            distance: distance,
-            angle: angle,
-            planetPosition: planetPosition
+            actualX: actualX,
+            actualZ: actualZ,
+            actualDistance: actualDistance,
+            actualAngle: actualAngle,
+            storedDistance: planetInfo.distance,
+            storedAngle: planetInfo.angle
           });
           
-          // Position camera to look at the planet from a good angle
-          targetTheta = angle + Math.PI / 3; // Offset for better viewing angle
+          // Position camera to look at the planet from a good angle using actual position
+          targetTheta = actualAngle + Math.PI / 3; // Offset for better viewing angle
           targetPhi = 0.2; // Slight elevation
-          targetDistance = Math.max(distance * 0.4, 40); // Distance based on planet's orbit
+          targetDistance = Math.max(actualDistance * 0.4, 40); // Distance based on actual planet position
           
           console.log('Calculated target angles:', {
             targetTheta: targetTheta,
