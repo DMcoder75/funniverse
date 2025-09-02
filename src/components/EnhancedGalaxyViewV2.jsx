@@ -51,7 +51,7 @@ const EnhancedGalaxyViewV2 = forwardRef(({ onLocationChange }, ref) => {
           onLocationChange(regionName);
         }
         
-        // Get current camera state to preserve orientation
+        // Get current camera state
         const camera = cameraRef.current;
         const currentPosition = camera.position.clone();
         const targetPosition = new THREE.Vector3(position.x, position.y, position.z);
@@ -59,49 +59,51 @@ const EnhancedGalaxyViewV2 = forwardRef(({ onLocationChange }, ref) => {
         // Update camera target for smooth transition
         setCameraTarget(targetPosition);
         
-        // Calculate the offset from current position to target
-        // This preserves the viewing angle and distance relationship
-        const currentDistance = currentPosition.length();
-        const desiredDistance = Math.max(position.distance, currentDistance * 0.7);
+        // Calculate optimal viewing position for the target region
+        const targetDistance = Math.max(position.distance * 1.2, 2000); // Ensure good viewing distance
         
-        // Calculate new camera position maintaining relative orientation
-        const currentDirection = currentPosition.clone().normalize();
-        const targetDirection = targetPosition.clone().normalize();
+        // Calculate direction from target to camera for optimal viewing angle
+        const viewDirection = currentPosition.clone().sub(targetPosition).normalize();
         
-        // Blend the directions for smooth transition while preserving user's view angle
-        const blendFactor = 0.4; // Reduced blend for better orientation preservation
-        const blendedDirection = currentDirection.clone().lerp(targetDirection, blendFactor);
+        // If too close to target, use a default viewing direction
+        if (currentPosition.distanceTo(targetPosition) < 500) {
+          viewDirection.set(1, 0.5, 1).normalize();
+        }
+        
+        // Position camera at optimal distance from target
         const newCameraPosition = targetPosition.clone().add(
-          blendedDirection.multiplyScalar(desiredDistance)
+          viewDirection.multiplyScalar(targetDistance)
         );
         
-        console.log('Smoothly moving camera from:', currentPosition, 'to:', newCameraPosition);
+        console.log('Moving camera to view region:', regionName);
+        console.log('Target position:', targetPosition);
+        console.log('New camera position:', newCameraPosition);
         
-        // Smooth animation preserving orientation
+        // Smooth animation with clear movement to target
         const animateToTarget = () => {
           const startTime = Date.now();
-          const duration = 2500; // Reduced duration for more responsive feel
+          const duration = 3000; // Slightly longer for smoother movement
           
           const animateStep = () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
             
             // Smooth easing function
-            const easeProgress = 1 - Math.pow(1 - progress, 2.5);
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
             
             // Interpolate camera position smoothly
             camera.position.lerpVectors(currentPosition, newCameraPosition, easeProgress);
             
-            // Smoothly transition the look-at target with less aggressive blending
-            const currentLookAt = new THREE.Vector3(0, 0, 0);
-            const targetLookAt = targetPosition.clone();
-            const blendedLookAt = currentLookAt.lerp(targetLookAt, easeProgress * 0.3);
+            // Look at the target region with smooth transition
+            const currentLookAt = new THREE.Vector3(0, 0, 0); // Current center
+            const targetLookAt = targetPosition.clone(); // Target region
+            const blendedLookAt = currentLookAt.lerp(targetLookAt, easeProgress * 0.7); // More aggressive look-at
             camera.lookAt(blendedLookAt);
             
             if (progress < 1) {
               requestAnimationFrame(animateStep);
             } else {
-              console.log('Galaxy navigation animation complete');
+              console.log('Galaxy navigation animation complete - now viewing:', regionName);
               setIsNavigating(false);
             }
           };
