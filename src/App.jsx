@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react'
 import EnhancedRealisticUniverseScene from './components/EnhancedRealisticUniverseScene'
 import GoogleEarthView from './components/GoogleEarthView'
-import EnhancedGalaxyView from './components/EnhancedGalaxyView'
+import EnhancedGalaxyViewV2 from './components/EnhancedGalaxyViewV2'
 import NavigationPanel from './components/NavigationPanel'
+import EnhancedGalaxyNavigation from './components/EnhancedGalaxyNavigation'
+import GalaxyVisualEnhancer from './components/GalaxyVisualEnhancer'
 import CollapsibleInfoPanel from './components/CollapsibleInfoPanel'
 import './App.css'
 
@@ -55,7 +57,7 @@ function App() {
           onLocationChange={handleLocationChange}
         />
       ) : (
-        <EnhancedGalaxyView 
+        <EnhancedGalaxyViewV2 
           ref={galaxyRef}
           onLocationChange={handleLocationChange}
         />
@@ -66,6 +68,18 @@ function App() {
         currentLocation={currentLocation}
         viewMode={viewMode}
         onBackToUniverse={handleBackToUniverse}
+      />
+      
+      {viewMode === 'galaxy' && (
+        <EnhancedGalaxyNavigation 
+          onNavigateTo={handleNavigateTo}
+          currentLocation={currentLocation}
+        />
+      )}
+      
+      <GalaxyVisualEnhancer 
+        currentLocation={currentLocation}
+        isVisible={viewMode === 'galaxy'}
       />
       
       <CollapsibleInfoPanel 
