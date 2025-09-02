@@ -9,14 +9,11 @@ import {
   Star, 
   Zap, 
   Navigation,
-  MapPin,
-  Telescope,
-  Orbit,
-  Sun,
+  ArrowLeft,
   Moon
 } from 'lucide-react';
 
-const EnhancedGalaxyNavigation = ({ onNavigateTo, currentLocation }) => {
+const EnhancedGalaxyNavigation = ({ onNavigateTo, currentLocation, onBackToUniverse }) => {
   const galaxyRegions = [
     {
       category: "Major Spiral Arms",
@@ -158,6 +155,19 @@ const EnhancedGalaxyNavigation = ({ onNavigateTo, currentLocation }) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Back to Universe Button */}
+        {onBackToUniverse && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full justify-start gap-2 bg-gray-800/50 border-gray-600 hover:bg-gray-700/50 text-white"
+            onClick={onBackToUniverse}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Universe
+          </Button>
+        )}
+        
         {galaxyRegions.map((category) => (
           <div key={category.category} className="space-y-2">
             <div className="text-xs font-semibold text-gray-300 uppercase tracking-wide border-b border-gray-700 pb-1">
@@ -171,8 +181,13 @@ const EnhancedGalaxyNavigation = ({ onNavigateTo, currentLocation }) => {
                     key={region.name}
                     variant="outline"
                     size="sm"
-                    className={getButtonStyle(region)}
-                    onClick={() => onNavigateTo(region.name)}
+                    className={`w-full justify-start gap-2 text-xs transition-all duration-200 ${getButtonStyle(region)}`}
+                    onClick={() => {
+                      console.log('Galaxy navigation button clicked:', region.name);
+                      if (onNavigateTo) {
+                        onNavigateTo(region.name);
+                      }
+                    }}
                   >
                     <div className="flex items-start gap-2 w-full">
                       <IconComponent className={`w-4 h-4 ${region.color} mt-0.5 flex-shrink-0`} />
