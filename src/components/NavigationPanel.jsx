@@ -26,7 +26,7 @@ const NavigationPanel = ({ onNavigateTo, currentLocation, viewMode, onBackToUniv
   ];
 
   return (
-    <Card className="absolute top-4 right-4 w-64 bg-black/80 text-white border-gray-600">
+    <Card className={`absolute top-4 ${viewMode === 'galaxy' ? 'left-4' : 'right-4'} w-64 bg-black/80 text-white border-gray-600 z-10`}>
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center gap-2">
           <Home className="w-5 h-5" />

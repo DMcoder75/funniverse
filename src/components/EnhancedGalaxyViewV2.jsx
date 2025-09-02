@@ -9,6 +9,8 @@ const EnhancedGalaxyViewV2 = forwardRef(({ onLocationChange }, ref) => {
   const galaxyRef = useRef(null);
   const animationIdRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [cameraTarget, setCameraTarget] = useState(new THREE.Vector3(0, 0, 0));
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Enhanced galaxy navigation positions with more detailed regions
   const galaxyPositions = {
@@ -39,45 +41,68 @@ const EnhancedGalaxyViewV2 = forwardRef(({ onLocationChange }, ref) => {
       console.log('Navigating to galaxy region:', regionName);
       
       const position = galaxyPositions[regionName];
-      if (position && cameraRef.current) {
+      if (position && cameraRef.current && !isNavigating) {
         console.log('Galaxy region found:', regionName, position);
+        
+        setIsNavigating(true);
         
         // Update location immediately
         if (onLocationChange) {
           onLocationChange(regionName);
         }
         
-        // Animate camera to the target position
+        // Get current camera state to preserve orientation
         const camera = cameraRef.current;
-        const startPosition = camera.position.clone();
+        const currentPosition = camera.position.clone();
         const targetPosition = new THREE.Vector3(position.x, position.y, position.z);
         
-        // Calculate camera position at appropriate distance from target
-        const direction = targetPosition.clone().normalize();
-        const cameraPosition = targetPosition.clone().add(direction.multiplyScalar(position.distance));
+        // Update camera target for smooth transition
+        setCameraTarget(targetPosition);
         
-        console.log('Animating camera from:', startPosition, 'to:', cameraPosition);
+        // Calculate the offset from current position to target
+        // This preserves the viewing angle and distance relationship
+        const currentDistance = currentPosition.length();
+        const desiredDistance = Math.max(position.distance, currentDistance * 0.7);
         
-        // Smooth animation with easing
+        // Calculate new camera position maintaining relative orientation
+        const currentDirection = currentPosition.clone().normalize();
+        const targetDirection = targetPosition.clone().normalize();
+        
+        // Blend the directions for smooth transition while preserving user's view angle
+        const blendFactor = 0.4; // Reduced blend for better orientation preservation
+        const blendedDirection = currentDirection.clone().lerp(targetDirection, blendFactor);
+        const newCameraPosition = targetPosition.clone().add(
+          blendedDirection.multiplyScalar(desiredDistance)
+        );
+        
+        console.log('Smoothly moving camera from:', currentPosition, 'to:', newCameraPosition);
+        
+        // Smooth animation preserving orientation
         const animateToTarget = () => {
           const startTime = Date.now();
-          const duration = 4000; // 4 seconds for smoother transition
+          const duration = 2500; // Reduced duration for more responsive feel
           
           const animateStep = () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
             
             // Smooth easing function
-            const easeProgress = 1 - Math.pow(1 - progress, 4);
+            const easeProgress = 1 - Math.pow(1 - progress, 2.5);
             
-            // Interpolate camera position
-            camera.position.lerpVectors(startPosition, cameraPosition, easeProgress);
-            camera.lookAt(targetPosition);
+            // Interpolate camera position smoothly
+            camera.position.lerpVectors(currentPosition, newCameraPosition, easeProgress);
+            
+            // Smoothly transition the look-at target with less aggressive blending
+            const currentLookAt = new THREE.Vector3(0, 0, 0);
+            const targetLookAt = targetPosition.clone();
+            const blendedLookAt = currentLookAt.lerp(targetLookAt, easeProgress * 0.3);
+            camera.lookAt(blendedLookAt);
             
             if (progress < 1) {
               requestAnimationFrame(animateStep);
             } else {
               console.log('Galaxy navigation animation complete');
+              setIsNavigating(false);
             }
           };
           
@@ -85,11 +110,13 @@ const EnhancedGalaxyViewV2 = forwardRef(({ onLocationChange }, ref) => {
         };
         
         animateToTarget();
+      } else if (isNavigating) {
+        console.log('Navigation already in progress, ignoring request');
       } else {
         console.log('Galaxy region not found:', regionName, 'Available regions:', Object.keys(galaxyPositions));
       }
     }
-  }), [onLocationChange]);
+  }), [onLocationChange, isNavigating]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -500,8 +527,93 @@ const EnhancedGalaxyViewV2 = forwardRef(({ onLocationChange }, ref) => {
 
   // Enhanced galactic labels
   function createEnhancedGalacticLabels(scene, galaxyGroup) {
-    // Implementation for enhanced labels would go here
-    // This is a placeholder for the label creation system
+    const labels = [
+      { name: 'Sagittarius A*\n(Galactic Core)', position: [0, 0, 0], color: '#ffdd44', size: 1.2 },
+      { name: 'Perseus Arm', position: [-4000, 200, -2000], color: '#4488ff', size: 1.0 },
+      { name: 'Sagittarius Arm', position: [2500, -200, 3000], color: '#8844ff', size: 1.0 },
+      { name: 'Orion Arm\n(Our Location)', position: [-1200, 100, 1500], color: '#ffaa44', size: 1.1 },
+      { name: 'Scutum-Centaurus Arm', position: [3500, 150, -2500], color: '#44ff88', size: 1.0 },
+      { name: 'Central Bar', position: [800, 0, 800], color: '#ffcc66', size: 0.9 },
+      { name: 'Nuclear Bulge', position: [0, 200, 0], color: '#ffdd44', size: 0.8 },
+      { name: 'Galactic Halo', position: [0, 4000, 0], color: '#ff44aa', size: 0.7 },
+      { name: 'Outer Rim', position: [0, 300, 6000], color: '#44aaff', size: 0.8 }
+    ];
+
+    labels.forEach((labelData) => {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = 512;
+      canvas.height = 256;
+
+      // Clear canvas with transparent background
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Add semi-transparent background with rounded corners
+      context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      
+      // Polyfill for roundRect if not available
+      if (typeof context.roundRect !== 'function') {
+        const roundRect = (x, y, width, height, radius) => {
+          context.beginPath();
+          context.moveTo(x + radius, y);
+          context.lineTo(x + width - radius, y);
+          context.quadraticCurveTo(x + width, y, x + width, y + radius);
+          context.lineTo(x + width, y + height - radius);
+          context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+          context.lineTo(x + radius, y + height);
+          context.quadraticCurveTo(x, y + height, x, y + height - radius);
+          context.lineTo(x, y + radius);
+          context.quadraticCurveTo(x, y, x + radius, y);
+          context.closePath();
+        };
+        roundRect(10, 10, canvas.width - 20, canvas.height - 20, 10);
+      } else {
+        context.roundRect(10, 10, canvas.width - 20, canvas.height - 20, 10);
+      }
+      context.fill();
+      
+      // Set text properties
+      context.fillStyle = labelData.color;
+      context.font = `bold ${24 * labelData.size}px Arial`;
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      
+      // Add glow effect
+      context.shadowColor = labelData.color;
+      context.shadowBlur = 10;
+      context.shadowOffsetX = 0;
+      context.shadowOffsetY = 0;
+      
+      // Handle multi-line text
+      const lines = labelData.name.split('\n');
+      const lineHeight = 30 * labelData.size;
+      const startY = canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
+      
+      lines.forEach((line, index) => {
+        context.fillText(line, canvas.width / 2, startY + index * lineHeight);
+      });
+
+      // Create texture from canvas
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
+
+      // Create sprite material
+      const spriteMaterial = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.9,
+        depthTest: false,
+        depthWrite: false
+      });
+
+      // Create sprite
+      const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.position.set(labelData.position[0], labelData.position[1], labelData.position[2]);
+      sprite.scale.set(800 * labelData.size, 400 * labelData.size, 1);
+
+      // Add to scene (not galaxy group so labels don't rotate with galaxy)
+      scene.add(sprite);
+    });
   }
 
   // Enhanced background stars
